@@ -1,5 +1,5 @@
 {
-  "name": "HabitFlow AI",
+  "name": "Habit Architect",
   "description": "A minimalist, aesthetic habit and goal tracker powered by Gemini AI for daily personalized insights and progress analysis.",
   "requestFramePermissions": [
     "microphone"

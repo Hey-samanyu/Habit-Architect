@@ -128,7 +128,8 @@ const generateFakeData = (): AppState => {
 
 const App = () => {
   const [state, setState] = useState<AppState>(() => {
-    const saved = localStorage.getItem('habitflow_data');
+    // Updated key to match new app name
+    const saved = localStorage.getItem('habit_architect_data');
     if (saved) {
       const parsed = JSON.parse(saved);
       parsed.habits = parsed.habits.map((h: any) => ({
@@ -168,7 +169,7 @@ const App = () => {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('habitflow_data', JSON.stringify(state));
+    localStorage.setItem('habit_architect_data', JSON.stringify(state));
   }, [state]);
 
   useEffect(() => {
@@ -376,7 +377,7 @@ const App = () => {
               <Layout className="text-white" size={24} />
             </div>
             <h1 className="text-2xl font-extrabold tracking-tight text-white">
-              Habit<span className="text-indigo-400">Flow</span>
+              Habit<span className="text-indigo-400">Architect</span>
             </h1>
             <button onClick={() => setSidebarOpen(false)} className="lg:hidden ml-auto text-slate-400">
                 <X size={24} />
@@ -610,7 +611,7 @@ const App = () => {
                                  </p>
                                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-indigo-200">
                                      <Activity size={14} />
-                                     HabitFlow AI
+                                     Habit Architect AI
                                  </div>
                              </div>
                         </div>

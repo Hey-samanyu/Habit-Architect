@@ -28,7 +28,7 @@ export const AIOverview: React.FC<AIOverviewProps> = ({ habits, goals, logs }) =
     const totalHabits = habits.length;
     
     // 1. Build the message header
-    let message = `*🚀 HabitFlow Daily Update - ${format(new Date(), 'MMM do')}*\n\n`;
+    let message = `*🚀 Habit Architect Daily Update - ${format(new Date(), 'MMM do')}*\n\n`;
     
     // 2. Add Stats
     message += `📊 *Progress:* ${completedCount}/${totalHabits} Habits Done\n`;
@@ -52,7 +52,7 @@ export const AIOverview: React.FC<AIOverviewProps> = ({ habits, goals, logs }) =
         const cleanAnalysis = analysis.replace(/\*\*/g, '*');
         message += `\n🤖 *Kairo's Insight:*\n${cleanAnalysis}`;
     } else {
-        message += `\nCheck out my progress on HabitFlow!`;
+        message += `\nCheck out my progress on Habit Architect!`;
     }
 
     // 6. Encode and Open

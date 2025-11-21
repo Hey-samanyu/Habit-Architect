@@ -273,9 +273,15 @@ export const KairoChat: React.FC<KairoChatProps> = ({ habits, goals, logs }) => 
           </div>
         )}
         
-        {/* Context Picker Overlay */}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input Area */}
+      <div className="p-4 bg-white border-t border-slate-100 shadow-[0_-4px_20px_rgba(0,0,0,0.02)] relative">
+        
+        {/* Context Picker Overlay (Moved here to stay fixed above input) */}
         {showContextPicker && (
-            <div className="absolute bottom-2 left-4 right-4 bg-white rounded-2xl shadow-xl border border-slate-200 p-4 animate-in zoom-in-95 duration-200 max-h-[300px] overflow-y-auto z-20">
+            <div className="absolute bottom-full left-4 right-4 mb-4 bg-white rounded-2xl shadow-xl border border-slate-200 p-4 animate-in zoom-in-95 duration-200 max-h-[300px] overflow-y-auto z-20">
                 <div className="flex justify-between items-center mb-3">
                     <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Select Item to Analyze</h4>
                     <button onClick={() => setShowContextPicker(false)} className="p-1 hover:bg-slate-100 rounded-full"><X size={14}/></button>
@@ -323,11 +329,6 @@ export const KairoChat: React.FC<KairoChatProps> = ({ habits, goals, logs }) => 
             </div>
         )}
 
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Input Area */}
-      <div className="p-4 bg-white border-t border-slate-100 shadow-[0_-4px_20px_rgba(0,0,0,0.02)]">
         <div className="flex items-center gap-2 bg-slate-50 p-2 rounded-2xl border border-slate-200 focus-within:border-indigo-400 focus-within:ring-4 focus-within:ring-indigo-50 transition-all">
           <button
             onClick={() => setShowContextPicker(!showContextPicker)}

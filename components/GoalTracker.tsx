@@ -37,9 +37,9 @@ export const GoalTracker: React.FC<GoalTrackerProps> = ({ goals, onUpdateProgres
       let message = "";
       
       if (isCompleted) {
-          message = `🎉 *Goal Smashed!* I just completed my goal: *${goal.title}*! (${goal.target} ${goal.unit})\n\nTracking with HabitFlow 🚀`;
+          message = `🎉 *Goal Smashed!* I just completed my goal: *${goal.title}*! (${goal.target} ${goal.unit})\n\nTracking with Habit Architect 🚀`;
       } else {
-          message = `🚀 *Goal Update:* I'm ${percent}% of the way to my goal: *${goal.title}*.\nProgress: ${goal.current}/${goal.target} ${goal.unit}.\n\nTracking with HabitFlow ⚡`;
+          message = `🚀 *Goal Update:* I'm ${percent}% of the way to my goal: *${goal.title}*.\nProgress: ${goal.current}/${goal.target} ${goal.unit}.\n\nTracking with Habit Architect ⚡`;
       }
       
       window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');

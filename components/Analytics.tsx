@@ -132,7 +132,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ habits, goals, logs }) => 
       message += `${d.day}: ${bar} ${d.percentage}%\n`;
     });
     
-    message += `\nTracking with HabitFlow 🚀`;
+    message += `\nTracking with Habit Architect 🚀`;
     
     window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
   };
