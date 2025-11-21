@@ -55,7 +55,13 @@ export const KairoChat: React.FC<KairoChatProps> = ({ habits, goals, logs }) => 
       if (session) {
         chatSessionRef.current = session;
       } else {
-        setMessages(prev => [...prev, { role: 'model', text: "I'm having trouble connecting to my brain (API Key missing). Check your settings!" }]);
+        setMessages(prev => [
+          ...prev, 
+          { 
+            role: 'model', 
+            text: "⚠️ Connection Error: API Key is missing.\n\nIf you are on Vercel:\n1. Go to Settings > Environment Variables\n2. Add 'API_KEY' with your Gemini Key.\n3. Redeploy." 
+          }
+        ]);
       }
     }
   }, [isOpen, habits, goals, logs]);
