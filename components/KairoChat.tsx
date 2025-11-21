@@ -59,7 +59,7 @@ export const KairoChat: React.FC<KairoChatProps> = ({ habits, goals, logs }) => 
           ...prev, 
           { 
             role: 'model', 
-            text: "⚠️ Connection Error: API Key is missing.\n\nIf you are on Vercel:\n1. Go to Settings > Environment Variables\n2. Add 'API_KEY' with your Gemini Key.\n3. Redeploy." 
+            text: "⚠️ Connection Error: API Key is missing.\n\nIf you just added it to Vercel, you MUST redeploy:\n1. Go to Vercel Dashboard > Deployments.\n2. Click the three dots (...) next to the latest deploy.\n3. Click 'Redeploy'.\n\nThis injects the new key into the app." 
           }
         ]);
       }
