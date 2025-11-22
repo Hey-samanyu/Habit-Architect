@@ -13,6 +13,11 @@ export enum Frequency {
   ONCE = 'Once'
 }
 
+export interface User {
+  id: string;
+  email?: string;
+}
+
 export interface Habit {
   id: string;
   title: string;

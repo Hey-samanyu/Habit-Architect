@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Calendar, Layout, BarChart3, CheckCircle2, Target, Menu, X, Home, ListChecks, PieChart, Activity, RotateCcw, Bell } from 'lucide-react';
+import { Plus, Calendar, Layout, BarChart3, CheckCircle2, Target, Menu, X, Home, ListChecks, PieChart, Activity, RotateCcw, Bell, LogOut } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 
-import { Habit, Goal, Category, AppState, Frequency, DailyLog } from './types';
+import { Habit, Goal, Category, AppState, Frequency, DailyLog, User } from './types';
+import { supabase } from './services/supabaseClient';
+import { AuthScreen } from './components/AuthScreen';
 import { HabitTracker } from './components/HabitTracker';
 import { GoalTracker } from './components/GoalTracker';
 import { AIOverview } from './components/AIOverview';
@@ -12,7 +14,6 @@ import { Modal, Card } from './components/UIComponents';
 
 // Helper to get today's date string YYYY-MM-DD
 const getTodayKey = () => format(new Date(), 'yyyy-MM-dd');
-const STORAGE_KEY = 'habit-architect-data';
 
 const generateFakeData = (): AppState => {
   const today = new Date();
@@ -72,31 +73,96 @@ const generateFakeData = (): AppState => {
 };
 
 const App = () => {
+  const [user, setUser] = useState<User | null>(null);
   const [state, setState] = useState<AppState>({ habits: [], goals: [], logs: {} });
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
-  // Load Data from Local Storage
+  // --- Authentication & Data Loading ---
+  
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try {
-        setState(JSON.parse(saved));
-      } catch (e) {
-        console.error("Failed to parse local storage", e);
-      }
-    } else {
-        // Initialize with some empty state or user can hit reset to get fake data
-        setState({ habits: [], goals: [], logs: {} });
+    // 1. Check for active session
+    if (!supabase) {
+        setIsLoaded(true); // Fallback if no supabase configured
+        return;
     }
-    setIsLoaded(true);
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setUser({ id: session.user.id, email: session.user.email });
+        loadUserData(session.user.id);
+      } else {
+        setIsLoaded(true);
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setUser({ id: session.user.id, email: session.user.email });
+        loadUserData(session.user.id);
+      } else {
+        setUser(null);
+        setState({ habits: [], goals: [], logs: {} }); // Clear data on logout
+        setIsLoaded(true);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  // Save Data to Local Storage
-  useEffect(() => {
-    if (isLoaded) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  const loadUserData = async (userId: string) => {
+    if (!supabase) return;
+    try {
+      const { data, error } = await supabase
+        .from('user_data')
+        .select('content')
+        .eq('user_id', userId)
+        .single();
+
+      if (data && data.content) {
+        // Ensure habits/goals exist in content, defaulting if fresh account
+        setState({
+            habits: data.content.habits || [],
+            goals: data.content.goals || [],
+            logs: data.content.logs || {}
+        });
+      } else {
+         // No data exists yet (new user), keep default empty state
+      }
+    } catch (error) {
+      console.error("Error loading data:", error);
+    } finally {
+      setIsLoaded(true);
     }
-  }, [state, isLoaded]);
+  };
+
+  // Save Data to Supabase
+  useEffect(() => {
+    if (isLoaded && user && supabase) {
+        const saveData = async () => {
+            setIsSyncing(true);
+            try {
+                 await supabase.from('user_data').upsert({
+                    user_id: user.id,
+                    content: state,
+                    updated_at: new Date().toISOString()
+                 });
+            } catch (err) {
+                console.error("Failed to sync", err);
+            } finally {
+                setIsSyncing(false);
+            }
+        }
+        
+        // Debounce save
+        const timeout = setTimeout(saveData, 1000);
+        return () => clearTimeout(timeout);
+    }
+  }, [state, isLoaded, user]);
+
+  const handleSignOut = async () => {
+      if(supabase) await supabase.auth.signOut();
+  };
 
 
   // --- UI State ---
@@ -181,7 +247,12 @@ const App = () => {
     return () => observer.disconnect();
   }, [isLoaded]); 
 
-  if (!isLoaded) return null;
+  if (!isLoaded) return <div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div></div>;
+
+  // --- Auth Guard ---
+  if (!user) {
+      return <AuthScreen />;
+  }
 
   const todayKey = getTodayKey();
   const todayLog = state.logs[todayKey] || { date: todayKey, completedHabitIds: [], goalProgress: {} };
@@ -352,9 +423,12 @@ const App = () => {
           </nav>
 
           <div className="mt-auto pt-6 border-t border-slate-800 space-y-2">
-              <button onClick={resetData} className="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-emerald-400 transition-colors text-sm font-medium w-full">
-                  <RotateCcw size={18} />
-                  Reset Demo Data
+               <div className="px-4 py-2 text-xs text-slate-500 font-medium">
+                   {isSyncing ? "Syncing..." : "Saved to Cloud"}
+               </div>
+              <button onClick={handleSignOut} className="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-rose-400 transition-colors text-sm font-medium w-full">
+                  <LogOut size={18} />
+                  Sign Out
               </button>
           </div>
         </div>
@@ -379,8 +453,11 @@ const App = () => {
                 </div>
             </div>
             <div className="flex items-center gap-4">
-                <div className="w-8 h-8 bg-indigo-100 rounded-full border border-indigo-200 flex items-center justify-center text-indigo-700 font-bold text-xs uppercase">
-                    G
+                <div className="flex items-center gap-3 text-sm font-medium text-slate-600">
+                    <span className="hidden md:inline">{user.email}</span>
+                    <div className="w-8 h-8 bg-indigo-100 rounded-full border border-indigo-200 flex items-center justify-center text-indigo-700 font-bold text-xs uppercase">
+                        {user.email?.[0] || 'U'}
+                    </div>
                 </div>
             </div>
         </header>
