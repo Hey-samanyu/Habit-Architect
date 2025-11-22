@@ -139,10 +139,11 @@ const App = () => {
   // Save Data to Supabase
   useEffect(() => {
     if (isLoaded && user && supabase) {
+        const client = supabase; // Create local reference to satisfy TS in async closure
         const saveData = async () => {
             setIsSyncing(true);
             try {
-                 await supabase.from('user_data').upsert({
+                 await client.from('user_data').upsert({
                     user_id: user.id,
                     content: state,
                     updated_at: new Date().toISOString()
