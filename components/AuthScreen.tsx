@@ -1,58 +1,84 @@
 import React, { useState } from 'react';
-import { Layout, ArrowRight, Lock, User as UserIcon, Mail, Sparkles } from 'lucide-react';
-import { User } from '../types';
+import { Layout, ArrowRight, Mail, Sparkles, KeyRound, CheckCircle2, AlertCircle } from 'lucide-react';
+import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
 
-interface AuthScreenProps {
-  onLogin: (user: User) => void;
-}
-
-export const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
-  const [isLogin, setIsLogin] = useState(true);
-  const [username, setUsername] = useState('');
-  const [name, setName] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+export const AuthScreen: React.FC = () => {
+  const [email, setEmail] = useState('');
+  const [otp, setOtp] = useState('');
+  const [isOtpSent, setIsOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Check configuration immediately
+  if (!isSupabaseConfigured()) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="bg-white max-w-md w-full p-8 rounded-3xl shadow-xl border border-rose-100 text-center">
+          <div className="w-16 h-16 bg-rose-50 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="text-rose-500" size={32} />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900 mb-2">Configuration Missing</h2>
+          <p className="text-slate-600 text-sm mb-6">
+            Supabase API keys are not found. Please add <code>SUPABASE_URL</code> and <code>SUPABASE_ANON_KEY</code> to your Vercel Project Settings.
+          </p>
+          <a 
+            href="https://vercel.com/dashboard" 
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition-colors"
+          >
+            Open Vercel Dashboard
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
-    // Simulate API delay
-    setTimeout(() => {
-      if (!username || !password || (!isLogin && !name)) {
-        setError('Please fill in all fields');
-        setLoading(false);
-        return;
-      }
+    if (!supabase) return;
 
-      // Simple local storage auth simulation
-      const usersKey = 'habit_architect_users';
-      const existingUsersStr = localStorage.getItem(usersKey);
-      const existingUsers = existingUsersStr ? JSON.parse(existingUsersStr) : {};
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          shouldCreateUser: true, // This enables "Sign Up" automatically
+        },
+      });
 
-      if (isLogin) {
-        // Login Logic
-        const user = existingUsers[username];
-        if (user && user.password === password) {
-          onLogin({ username: user.username, name: user.name });
-        } else {
-          setError('Invalid username or password');
-        }
-      } else {
-        // Signup Logic
-        if (existingUsers[username]) {
-          setError('Username already exists');
-        } else {
-          const newUser = { username, name, password };
-          existingUsers[username] = newUser;
-          localStorage.setItem(usersKey, JSON.stringify(existingUsers));
-          onLogin({ username, name });
-        }
-      }
+      if (error) throw error;
+      setIsOtpSent(true);
+    } catch (err: any) {
+      setError(err.message || 'Failed to send code');
+    } finally {
       setLoading(false);
-    }, 800);
+    }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    if (!supabase) return;
+
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        email,
+        token: otp,
+        type: 'email',
+      });
+
+      if (error) throw error;
+      // App.tsx listener will handle the redirect/state change
+    } catch (err: any) {
+      setError(err.message || 'Invalid code');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -63,7 +89,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
         <div className="absolute bottom-[-10%] left-[-5%] w-[500px] h-[500px] bg-purple-200/40 rounded-full blur-3xl"></div>
       </div>
 
-      <div className="bg-white w-full max-w-md rounded-3xl shadow-xl border border-slate-100 relative z-10 overflow-hidden flex flex-col md:flex-row animate-in zoom-in-95 duration-300">
+      <div className="bg-white w-full max-w-md rounded-3xl shadow-xl border border-slate-100 relative z-10 overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
         
         <div className="p-8 w-full">
           <div className="flex items-center justify-center gap-3 mb-8">
@@ -76,98 +102,85 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
           </div>
 
           <h2 className="text-xl font-bold text-center text-slate-800 mb-2">
-            {isLogin ? 'Welcome back' : 'Start your journey'}
+            {isOtpSent ? 'Check your inbox' : 'Welcome back'}
           </h2>
           <p className="text-center text-slate-500 text-sm mb-8">
-            {isLogin ? 'Enter your details to access your tracker.' : 'Create an account to build better habits.'}
+            {isOtpSent 
+              ? `We sent a temporary login code to ${email}` 
+              : 'Enter your email to sign in or create an account.'}
           </p>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {!isLogin && (
+          {!isOtpSent ? (
+            <form onSubmit={handleSendOtp} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Full Name</label>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Email Address</label>
                 <div className="relative">
-                  <UserIcon size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input 
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all font-medium text-slate-800 placeholder:text-slate-400"
-                    placeholder="John Doe"
+                    placeholder="you@example.com"
                   />
                 </div>
               </div>
-            )}
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Username</label>
-              <div className="relative">
-                <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input 
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all font-medium text-slate-800 placeholder:text-slate-400"
-                  placeholder="username"
-                />
-              </div>
-            </div>
+              {error && <div className="text-rose-500 text-xs font-bold text-center bg-rose-50 py-2 rounded-lg">{error}</div>}
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Password</label>
-              <div className="relative">
-                <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input 
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all font-medium text-slate-800 placeholder:text-slate-400"
-                  placeholder="••••••••"
-                />
-              </div>
-            </div>
-
-            {error && (
-              <div className="text-rose-500 text-xs font-bold text-center bg-rose-50 py-2 rounded-lg">
-                {error}
-              </div>
-            )}
-
-            <button 
-              type="submit"
-              disabled={loading}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-200 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed mt-2"
-            >
-              {loading ? (
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-              ) : (
-                <>
-                  {isLogin ? 'Sign In' : 'Create Account'} 
-                  <ArrowRight size={18} />
-                </>
-              )}
-            </button>
-          </form>
-
-          <div className="mt-6 text-center">
-            <p className="text-sm text-slate-500">
-              {isLogin ? "Don't have an account?" : "Already have an account?"}
               <button 
-                onClick={() => { setIsLogin(!isLogin); setError(''); }}
-                className="ml-1 font-bold text-indigo-600 hover:text-indigo-700 hover:underline"
+                type="submit"
+                disabled={loading}
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-200 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                {isLogin ? 'Sign up' : 'Log in'}
+                {loading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <>Send Code <ArrowRight size={18} /></>}
               </button>
-            </p>
-          </div>
-          
+            </form>
+          ) : (
+            <form onSubmit={handleVerifyOtp} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Login Code</label>
+                <div className="relative">
+                  <KeyRound size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input 
+                    type="text"
+                    required
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all font-medium text-slate-800 placeholder:text-slate-400 tracking-widest"
+                    placeholder="123456"
+                  />
+                </div>
+              </div>
+
+              {error && <div className="text-rose-500 text-xs font-bold text-center bg-rose-50 py-2 rounded-lg">{error}</div>}
+
+              <button 
+                type="submit"
+                disabled={loading}
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-emerald-200 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+              >
+                {loading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <>Verify & Login <CheckCircle2 size={18} /></>}
+              </button>
+
+              <button 
+                type="button" 
+                onClick={() => setIsOtpSent(false)}
+                className="w-full text-sm font-bold text-slate-400 hover:text-slate-600 py-2"
+              >
+                Use a different email
+              </button>
+            </form>
+          )}
+
           {/* Kairo Teaser */}
           <div className="mt-8 pt-6 border-t border-slate-100 flex items-center gap-3 opacity-70">
              <div className="bg-indigo-50 p-2 rounded-full">
                <Sparkles size={16} className="text-indigo-500" />
              </div>
              <p className="text-xs text-slate-500 font-medium">
-                Includes <strong>Kairo AI</strong> coach integration
+                Powered by <strong>Supabase</strong> Secure Auth
              </p>
           </div>
 

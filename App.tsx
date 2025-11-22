@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Calendar, Layout, BarChart3, CheckCircle2, Target, Menu, X, Home, ListChecks, PieChart, Activity, RotateCcw, Bell, LogOut } from 'lucide-react';
+import { Plus, Calendar, Layout, BarChart3, CheckCircle2, Target, Menu, X, Home, ListChecks, PieChart, Activity, RotateCcw, Bell, LogOut, Loader2 } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 
 import { Habit, Goal, Category, AppState, Frequency, DailyLog, User } from './types';
@@ -8,8 +8,9 @@ import { GoalTracker } from './components/GoalTracker';
 import { AIOverview } from './components/AIOverview';
 import { Analytics } from './components/Analytics';
 import { KairoChat } from './components/KairoChat';
-import { AuthScreen } from './components/AuthScreen';
 import { Modal, Card } from './components/UIComponents';
+import { AuthScreen } from './components/AuthScreen';
+import { supabase } from './services/supabaseClient';
 
 // Helper to get today's date string YYYY-MM-DD
 const getTodayKey = () => format(new Date(), 'yyyy-MM-dd');
@@ -42,22 +43,6 @@ const generateFakeData = (): AppState => {
       createdAt: subDays(today, 15).toISOString(), 
       streak: 12,
       frequency: Frequency.DAILY
-    },
-    { 
-      id: 'h4', 
-      title: 'Water Plants', 
-      category: Category.OTHER, 
-      createdAt: subDays(today, 20).toISOString(), 
-      streak: 0, 
-      frequency: Frequency.WEEKLY
-    },
-    { 
-      id: 'h5', 
-      title: 'Review Budget', 
-      category: Category.WORK, 
-      createdAt: subDays(today, 40).toISOString(), 
-      streak: 0,
-      frequency: Frequency.MONTHLY
     }
   ];
 
@@ -69,23 +54,7 @@ const generateFakeData = (): AppState => {
       target: 50, 
       unit: 'km', 
       frequency: Frequency.MONTHLY 
-    },
-    { 
-      id: 'g2', 
-      title: 'Finish "Atomic Habits"', 
-      current: 12, 
-      target: 12, 
-      unit: 'chapters', 
-      frequency: Frequency.ONCE 
-    },
-    { 
-      id: 'g3', 
-      title: 'Drink Water', 
-      current: 12000, 
-      target: 20000, 
-      unit: 'ml', 
-      frequency: Frequency.WEEKLY 
-    },
+    }
   ];
 
   const logs: Record<string, DailyLog> = {};
@@ -93,33 +62,9 @@ const generateFakeData = (): AppState => {
   for (let i = 0; i < 30; i++) {
     const date = subDays(today, i);
     const dateKey = format(date, 'yyyy-MM-dd');
-    let completedIds: string[] = [];
-    
-    if (i === 0) completedIds = ['h1', 'h2']; 
-    else if (i === 1) completedIds = ['h1', 'h2', 'h3']; 
-    else if (i === 2) completedIds = ['h1']; 
-    else if (i === 3) completedIds = ['h1', 'h2', 'h3']; 
-    else if (i === 4) completedIds = ['h1', 'h2']; 
-    else if (i === 5) completedIds = ['h1', 'h2', 'h3']; 
-    else if (i === 6) completedIds = ['h1']; 
-    else {
-        const random = Math.random();
-        if (random > 0.7) completedIds = ['h1', 'h2', 'h3'];
-        else if (random > 0.3) completedIds = ['h1', 'h2'];
-        else completedIds = ['h1'];
-    }
-
-    if (i < 24 && !completedIds.includes('h1')) completedIds.push('h1'); 
-    if (i < 8 && !completedIds.includes('h2')) completedIds.push('h2');
-    if (i < 12 && !completedIds.includes('h3')) completedIds.push('h3');
-    if (i === 2) completedIds.push('h4'); 
-    if (i === 10) completedIds.push('h5');
-
-    completedIds = [...new Set(completedIds)];
-
     logs[dateKey] = {
       date: dateKey,
-      completedHabitIds: completedIds,
+      completedHabitIds: i % 2 === 0 ? ['h1', 'h2'] : ['h1'],
       goalProgress: {}
     };
   }
@@ -128,49 +73,113 @@ const generateFakeData = (): AppState => {
 };
 
 const App = () => {
-  const [user, setUser] = useState<User | null>(() => {
-    const savedUser = localStorage.getItem('habit_architect_current_user');
-    return savedUser ? JSON.parse(savedUser) : null;
-  });
-
+  const [user, setUser] = useState<User | null>(null);
   const [state, setState] = useState<AppState>({ habits: [], goals: [], logs: {} });
+  const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
 
-  // Load data when User changes
+  // Auth Listener
   useEffect(() => {
-    if (!user) return;
-
-    const userKey = `habit_architect_data_${user.username}`;
-    const saved = localStorage.getItem(userKey);
-    
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      // Migration/Safety check for existing data structure
-      parsed.habits = parsed.habits.map((h: any) => ({
-        ...h,
-        frequency: h.frequency || Frequency.DAILY
-      }));
-      setState(parsed);
-    } else {
-      // New user? Give them fake data for demo purposes or empty
-      // Let's give fake data so the UI isn't empty
-      setState(generateFakeData());
+    if (!supabase) {
+      setLoading(false);
+      return;
     }
-  }, [user]);
 
-  // Save data when State changes
-  useEffect(() => {
-    if (!user) return;
-    const userKey = `habit_architect_data_${user.username}`;
-    localStorage.setItem(userKey, JSON.stringify(state));
-  }, [state, user]);
+    // Check current session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setUser({ id: session.user.id, email: session.user.email });
+        loadData(session.user.id);
+      } else {
+        setLoading(false);
+      }
+    });
+
+    // Listen for changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setUser({ id: session.user.id, email: session.user.email });
+        loadData(session.user.id);
+      } else {
+        setUser(null);
+        setState({ habits: [], goals: [], logs: {} });
+        setLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Load Data from Supabase
+  const loadData = async (userId: string) => {
+    if (!supabase) return;
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('user_data')
+        .select('content')
+        .eq('user_id', userId)
+        .single();
+
+      if (error && error.code !== 'PGRST116') { // PGRST116 is "Row not found" which is fine for new users
+        console.error('Error loading data:', error);
+      }
+
+      if (data && data.content) {
+        setState(data.content);
+      } else {
+        // New user, start fresh
+        setState({ habits: [], goals: [], logs: {} });
+      }
+    } catch (e) {
+      console.error('Load exception:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Save Data to Supabase (Debounced or Triggered)
+  const saveData = async (newState: AppState) => {
+    if (!supabase || !user) return;
+    setSyncing(true);
+    
+    try {
+      const { error } = await supabase
+        .from('user_data')
+        .upsert({ 
+          user_id: user.id, 
+          content: newState,
+          updated_at: new Date().toISOString()
+        });
+
+      if (error) throw error;
+    } catch (e) {
+      console.error('Error saving data:', e);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  // Wrap setState to also save to DB
+  const updateState = (updater: (prev: AppState) => AppState) => {
+    setState(prev => {
+      const newState = updater(prev);
+      saveData(newState); // Trigger save side-effect
+      return newState;
+    });
+  };
+
+  const handleLogout = async () => {
+    if (supabase) await supabase.auth.signOut();
+  };
 
 
+  // --- UI State ---
   const [isHabitModalOpen, setHabitModalOpen] = useState(false);
   const [isGoalModalOpen, setGoalModalOpen] = useState(false);
   const [currentHabitTab, setCurrentHabitTab] = useState<Frequency>(Frequency.DAILY);
-  const [isSidebarOpen, setSidebarOpen] = useState(false); // For mobile
-  const [activeSection, setActiveSection] = useState('dashboard'); // For highlighting nav
-  
+  const [isSidebarOpen, setSidebarOpen] = useState(false); 
+  const [activeSection, setActiveSection] = useState('dashboard');
   const mainRef = useRef<HTMLDivElement>(null);
 
   // Form State
@@ -186,6 +195,7 @@ const App = () => {
 
   const lastCheckedMinute = useRef<string>("");
 
+  // Notifications
   useEffect(() => {
     if ('Notification' in window && Notification.permission !== 'granted') {
       Notification.requestPermission();
@@ -221,44 +231,50 @@ const App = () => {
     return () => clearInterval(interval);
   }, [state.habits, state.logs]);
 
-  // Scroll Spy Logic
+  // Scroll Spy
   useEffect(() => {
     const main = mainRef.current;
     if (!main) return;
 
     const observerOptions = {
       root: main,
-      threshold: 0.2, // Trigger when 20% of the section is visible
-      rootMargin: '-10% 0px -50% 0px' // Offset to trigger closer to top
+      threshold: 0.2,
+      rootMargin: '-10% 0px -50% 0px'
     };
 
     const observer = new IntersectionObserver((entries) => {
       entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          if (entry.target.id) {
+        if (entry.isIntersecting && entry.target.id) {
             setActiveSection(entry.target.id);
-          }
         }
       });
-      
-      // Check if we are at the very top for Dashboard
-      if (main.scrollTop < 100) {
-        setActiveSection('dashboard');
-      }
+      if (main.scrollTop < 100) setActiveSection('dashboard');
     }, observerOptions);
 
     const sections = document.querySelectorAll('section[id]');
     sections.forEach((section) => observer.observe(section));
-
-    // Also watch the hero section if possible, or just rely on scrollTop logic
     return () => observer.disconnect();
-  }, [user]); // Re-run if user changes (layout might re-render)
+  }, [loading]); // Re-run when loading finishes and content renders
 
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 size={40} className="text-indigo-600 animate-spin" />
+          <p className="text-slate-500 font-medium animate-pulse">Loading Habit Architect...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <AuthScreen />;
+  }
 
   const todayKey = getTodayKey();
   const todayLog = state.logs[todayKey] || { date: todayKey, completedHabitIds: [], goalProgress: {} };
 
-  // Greeting Logic
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return "Good morning";
@@ -268,21 +284,10 @@ const App = () => {
 
   // --- Actions ---
   const resetData = () => {
-      if(confirm("Are you sure you want to reset all data and load sample data?")) {
-          const fakeData = generateFakeData();
-          setState(fakeData);
+      if(confirm("This will REPLACE your current data with sample data. Are you sure?")) {
+          updateState(() => generateFakeData());
       }
   }
-
-  const handleLogin = (loggedInUser: User) => {
-    setUser(loggedInUser);
-    localStorage.setItem('habit_architect_current_user', JSON.stringify(loggedInUser));
-  };
-
-  const handleLogout = () => {
-    setUser(null);
-    localStorage.removeItem('habit_architect_current_user');
-  };
 
   const openHabitModal = () => {
     setNewHabitFrequency(currentHabitTab);
@@ -300,18 +305,18 @@ const App = () => {
       frequency: newHabitFrequency,
       reminderTime: newHabitReminder || undefined
     };
-    setState(prev => ({ ...prev, habits: [...prev.habits, newHabit] }));
+    updateState(prev => ({ ...prev, habits: [...prev.habits, newHabit] }));
     setNewHabitTitle('');
     setNewHabitReminder('');
     setHabitModalOpen(false);
   };
 
   const deleteHabit = (id: string) => {
-    setState(prev => ({ ...prev, habits: prev.habits.filter(h => h.id !== id) }));
+    updateState(prev => ({ ...prev, habits: prev.habits.filter(h => h.id !== id) }));
   };
 
   const toggleHabit = (id: string) => {
-    setState(prev => {
+    updateState(prev => {
       const currentLog = prev.logs[todayKey] || { date: todayKey, completedHabitIds: [], goalProgress: {} };
       const isCompleted = currentLog.completedHabitIds.includes(id);
       
@@ -350,7 +355,7 @@ const App = () => {
       unit: newGoalUnit,
       frequency: newGoalFrequency
     };
-    setState(prev => ({ ...prev, goals: [...prev.goals, newGoal] }));
+    updateState(prev => ({ ...prev, goals: [...prev.goals, newGoal] }));
     setNewGoalTitle('');
     setNewGoalTarget(10);
     setNewGoalUnit('times');
@@ -359,11 +364,11 @@ const App = () => {
   };
 
   const deleteGoal = (id: string) => {
-    setState(prev => ({ ...prev, goals: prev.goals.filter(g => g.id !== id) }));
+    updateState(prev => ({ ...prev, goals: prev.goals.filter(g => g.id !== id) }));
   };
 
   const updateGoalProgress = (id: string, delta: number) => {
-    setState(prev => ({
+    updateState(prev => ({
       ...prev,
       goals: prev.goals.map(g => {
         if (g.id === id) {
@@ -375,7 +380,7 @@ const App = () => {
   };
 
   const scrollToSection = (id: string) => {
-    setSidebarOpen(false); // Close sidebar on mobile
+    setSidebarOpen(false); 
     setActiveSection(id);
     
     if (id === 'dashboard') {
@@ -391,20 +396,14 @@ const App = () => {
 
   const filteredHabits = state.habits.filter(h => h.frequency === currentHabitTab);
 
-  // Stats for Header
   const completedCount = todayLog.completedHabitIds.length;
   const totalHabits = state.habits.length;
   const percentage = totalHabits > 0 ? Math.round((completedCount / totalHabits) * 100) : 0;
 
-  // If not logged in, show Auth Screen
-  if (!user) {
-    return <AuthScreen onLogin={handleLogin} />;
-  }
-
   return (
     <div className="flex h-screen bg-[#f8fafc] text-slate-900 font-sans overflow-hidden">
       
-      {/* Sidebar (Desktop) */}
+      {/* Sidebar */}
       <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex flex-col h-full p-6">
           <div className="flex items-center gap-3 mb-10">
@@ -420,58 +419,33 @@ const App = () => {
           </div>
 
           <nav className="space-y-2 flex-1">
-            <button 
-              onClick={() => scrollToSection('dashboard')} 
-              className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-medium transition-all text-left ${
-                activeSection === 'dashboard' 
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-900/20' 
-                  : 'text-slate-400 hover:bg-white/5 hover:text-white'
-              }`}
-            >
-              <Home size={20} />
-              Dashboard
-            </button>
-            <button 
-              onClick={() => scrollToSection('habits')} 
-              className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-medium transition-all text-left ${
-                activeSection === 'habits' 
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-900/20' 
-                  : 'text-slate-400 hover:bg-white/5 hover:text-white'
-              }`}
-            >
-              <ListChecks size={20} />
-              My Habits
-            </button>
-            <button 
-              onClick={() => scrollToSection('goals')} 
-              className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-medium transition-all text-left ${
-                activeSection === 'goals' 
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-900/20' 
-                  : 'text-slate-400 hover:bg-white/5 hover:text-white'
-              }`}
-            >
-              <Target size={20} />
-              Goals
-            </button>
-            <button 
-              onClick={() => scrollToSection('analytics')} 
-              className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-medium transition-all text-left ${
-                activeSection === 'analytics' 
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-900/20' 
-                  : 'text-slate-400 hover:bg-white/5 hover:text-white'
-              }`}
-            >
-              <PieChart size={20} />
-              Analytics
-            </button>
+            {[
+              { id: 'dashboard', icon: Home, label: 'Dashboard' },
+              { id: 'habits', icon: ListChecks, label: 'My Habits' },
+              { id: 'goals', icon: Target, label: 'Goals' },
+              { id: 'analytics', icon: PieChart, label: 'Analytics' },
+            ].map(item => (
+              <button 
+                key={item.id}
+                onClick={() => scrollToSection(item.id)} 
+                className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-medium transition-all text-left ${
+                  activeSection === item.id
+                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-900/20' 
+                    : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                }`}
+              >
+                <item.icon size={20} />
+                {item.label}
+              </button>
+            ))}
           </nav>
 
           <div className="mt-auto pt-6 border-t border-slate-800 space-y-2">
-              <button onClick={resetData} className="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-rose-400 transition-colors text-sm font-medium w-full">
+              <button onClick={resetData} className="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-emerald-400 transition-colors text-sm font-medium w-full">
                   <RotateCcw size={18} />
                   Reset Demo Data
               </button>
-               <button onClick={handleLogout} className="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-indigo-300 transition-colors text-sm font-medium w-full">
+              <button onClick={handleLogout} className="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-rose-400 transition-colors text-sm font-medium w-full">
                   <LogOut size={18} />
                   Sign Out
               </button>
@@ -479,7 +453,6 @@ const App = () => {
         </div>
       </aside>
 
-      {/* Overlay for Mobile Sidebar */}
       {isSidebarOpen && (
           <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)}></div>
       )}
@@ -497,14 +470,15 @@ const App = () => {
                     <Calendar size={14} />
                     <span>{format(new Date(), 'EEEE, MMM do')}</span>
                 </div>
+                {syncing && (
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded">
+                    <Loader2 size={12} className="animate-spin" /> Saving...
+                  </div>
+                )}
             </div>
             <div className="flex items-center gap-4">
-                <button className="p-2 text-slate-400 hover:text-indigo-600 transition-colors relative">
-                    <Bell size={20} />
-                    <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full border border-white"></span>
-                </button>
                 <div className="w-8 h-8 bg-indigo-100 rounded-full border border-indigo-200 flex items-center justify-center text-indigo-700 font-bold text-xs uppercase">
-                    {user.name.slice(0, 2)}
+                    {user.email ? user.email.slice(0, 2) : 'HA'}
                 </div>
             </div>
         </header>
@@ -513,10 +487,10 @@ const App = () => {
         <main ref={mainRef} className="flex-1 overflow-y-auto p-4 lg:p-8 scroll-smooth">
             <div className="max-w-7xl mx-auto space-y-8">
                 
-                {/* Hero Section / Header */}
+                {/* Hero */}
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                     <div>
-                        <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">{getGreeting()}, {user.name.split(' ')[0]}</h2>
+                        <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">{getGreeting()}</h2>
                         <p className="text-slate-500 mt-1">Here's what's happening with your goals today.</p>
                     </div>
                     <div className="flex gap-3">
@@ -529,7 +503,7 @@ const App = () => {
                     </div>
                 </div>
 
-                {/* Metrics Row */}
+                {/* Metrics */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
                     <Card className="p-5 flex items-center gap-5 border-l-4 border-l-emerald-500">
                         <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
@@ -540,7 +514,6 @@ const App = () => {
                             <p className="text-2xl font-extrabold text-slate-800">{percentage}%</p>
                         </div>
                     </Card>
-                    
                     <Card className="p-5 flex items-center gap-5 border-l-4 border-l-indigo-500">
                         <div className="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600">
                              <BarChart3 size={24} />
@@ -550,7 +523,6 @@ const App = () => {
                             <p className="text-2xl font-extrabold text-slate-800">{state.habits.length}</p>
                         </div>
                     </Card>
-                    
                     <Card className="p-5 flex items-center gap-5 border-l-4 border-l-amber-500">
                         <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center text-amber-600">
                             <Target size={24} />
@@ -562,20 +534,10 @@ const App = () => {
                     </Card>
                 </div>
 
-                {/* Main Grid Layout */}
                 <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-                    
-                    {/* Left Column (Main Focus) */}
                     <div className="xl:col-span-2 space-y-8">
-                        
-                        {/* AI Insight Card */}
-                        <AIOverview 
-                            habits={state.habits} 
-                            goals={state.goals} 
-                            logs={state.logs} 
-                        />
+                        <AIOverview habits={state.habits} goals={state.goals} logs={state.logs} />
 
-                        {/* Habits Section */}
                         <section id="habits" className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 scroll-mt-20">
                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                                 <div>
@@ -585,8 +547,6 @@ const App = () => {
                                     </h3>
                                     <p className="text-sm text-slate-500">Manage your daily tasks</p>
                                 </div>
-                                
-                                {/* Tab Switcher */}
                                 <div className="flex p-1 bg-slate-100 rounded-xl self-start sm:self-auto">
                                     {[Frequency.DAILY, Frequency.WEEKLY, Frequency.MONTHLY].map((tab) => (
                                     <button
@@ -603,7 +563,6 @@ const App = () => {
                                     ))}
                                 </div>
                             </div>
-
                             <HabitTracker 
                                 habits={filteredHabits} 
                                 completedHabitIds={todayLog.completedHabitIds}
@@ -612,17 +571,12 @@ const App = () => {
                             />
                         </section>
 
-                         {/* Analytics Section (Moved here for better flow on mobile/tablet) */}
                          <section id="analytics" className="scroll-mt-20">
                             <Analytics habits={state.habits} goals={state.goals} logs={state.logs} />
                         </section>
-
                     </div>
 
-                    {/* Right Column (Context & Goals) */}
                     <div className="space-y-8">
-                        
-                         {/* Goals Section */}
                          <section id="goals" className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 scroll-mt-20">
                              <div className="flex items-center justify-between mb-6">
                                 <div>
@@ -639,9 +593,8 @@ const App = () => {
                                 onDeleteGoal={deleteGoal}
                             />
                         </section>
-
-                        {/* Mini Calendar or other widgets could go here */}
-                        <div className="bg-gradient-to-br from-indigo-600 to-violet-700 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden group">
+                        
+                         <div className="bg-gradient-to-br from-indigo-600 to-violet-700 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden group">
                              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-150 duration-700"></div>
                              <div className="relative z-10">
                                  <h4 className="font-bold text-lg mb-2">Keep it up! 🚀</h4>
@@ -654,17 +607,14 @@ const App = () => {
                                  </div>
                              </div>
                         </div>
-
                     </div>
                 </div>
             </div>
         </main>
       </div>
 
-      {/* Kairo Chat Bot */}
       <KairoChat habits={state.habits} goals={state.goals} logs={state.logs} />
 
-      {/* Add Habit Modal */}
       <Modal isOpen={isHabitModalOpen} onClose={() => setHabitModalOpen(false)} title="Create New Habit">
         <div className="space-y-4">
           <div>
@@ -677,7 +627,6 @@ const App = () => {
               className="w-full rounded-xl border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 px-4 py-2.5 border transition-all outline-none placeholder:text-slate-500 font-medium text-slate-800"
             />
           </div>
-          
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-1.5">Category</label>
@@ -692,13 +641,10 @@ const App = () => {
                   ))}
                 </select>
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
-                   <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                   </svg>
+                   <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 </div>
               </div>
             </div>
-            
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-1.5">Frequency</label>
               <div className="relative">
@@ -712,14 +658,11 @@ const App = () => {
                   ))}
                 </select>
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
-                   <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                   </svg>
+                   <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 </div>
               </div>
             </div>
           </div>
-
           <div>
             <label className="block text-sm font-bold text-slate-700 mb-1.5">Daily Reminder (Optional)</label>
             <div className="relative">
@@ -732,7 +675,6 @@ const App = () => {
               <Bell size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             </div>
           </div>
-
           <button 
             onClick={addHabit}
             className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-indigo-200 mt-2"
@@ -742,7 +684,6 @@ const App = () => {
         </div>
       </Modal>
 
-      {/* Add Goal Modal */}
       <Modal isOpen={isGoalModalOpen} onClose={() => setGoalModalOpen(false)} title="Set New Goal">
         <div className="space-y-4">
           <div>
@@ -755,7 +696,6 @@ const App = () => {
               className="w-full rounded-xl border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 px-4 py-2.5 border transition-all outline-none placeholder:text-slate-500 font-medium text-slate-800"
             />
           </div>
-          
           <div className="grid grid-cols-2 gap-4">
              <div>
               <label className="block text-sm font-bold text-slate-700 mb-1.5">Target Amount</label>
@@ -775,7 +715,9 @@ const App = () => {
                 placeholder="e.g. pages"
                 className="w-full rounded-xl border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 px-4 py-2.5 border transition-all outline-none placeholder:text-slate-500 font-medium text-slate-800"
               />
-              <div className="flex flex-wrap gap-2 mt-2.5">
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 mt-0">
                 {['times', 'minutes', 'hours', 'pages', 'tasks', 'sessions', 'km'].map((unit) => (
                   <button
                     key={unit}
@@ -790,10 +732,7 @@ const App = () => {
                     {unit}
                   </button>
                 ))}
-              </div>
             </div>
-          </div>
-
           <div>
             <label className="block text-sm font-bold text-slate-700 mb-1.5">Frequency</label>
             <div className="relative">
@@ -807,13 +746,10 @@ const App = () => {
                 ))}
               </select>
                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
-                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                 </svg>
+                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
               </div>
             </div>
           </div>
-
           <button 
             onClick={addGoal}
             className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-indigo-200 mt-2"
@@ -822,7 +758,6 @@ const App = () => {
           </button>
         </div>
       </Modal>
-
     </div>
   );
 };
