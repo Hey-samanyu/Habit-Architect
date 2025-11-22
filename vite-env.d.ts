@@ -1,14 +1,13 @@
 interface ImportMetaEnv {
-  readonly API_KEY: string
-  readonly SUPABASE_URL: string
-  readonly SUPABASE_ANON_KEY: string
+  readonly API_KEY: string;
+  readonly SUPABASE_URL: string;
+  readonly SUPABASE_ANON_KEY: string;
 }
 
 interface ImportMeta {
   readonly env: ImportMetaEnv
 }
 
-// augment global scope
 declare global {
   namespace NodeJS {
     interface ProcessEnv {
