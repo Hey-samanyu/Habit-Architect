@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Lock, Mail, ArrowRight, Loader2, Layout, AlertCircle, User as UserIcon } from 'lucide-react';
-import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { auth, isFirebaseConfigured } from '../services/firebase';
 import { User } from '../types';
 
 interface AuthScreenProps {
@@ -20,74 +21,63 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
     setLoading(true);
     setError(null);
 
-    if (!isSupabaseConfigured() || !supabase) {
-        setError("Database connection missing. Please add SUPABASE_URL and SUPABASE_ANON_KEY to Vercel settings.");
+    if (!isFirebaseConfigured() || !auth) {
+        setError("Firebase connection missing. Please check API keys.");
         setLoading(false);
         return;
     }
 
     try {
       if (isLogin) {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const fbUser = userCredential.user;
+        onAuthSuccess({
+            id: fbUser.uid,
+            email: fbUser.email || '',
+            name: fbUser.displayName || fbUser.email?.split('@')[0] || 'Architect'
         });
-
-        if (error) throw error;
-        if (data.user) {
-           onAuthSuccess({
-               id: data.user.id,
-               email: data.user.email || '',
-               name: data.user.user_metadata.full_name || data.user.email?.split('@')[0] || 'Architect'
-           });
-        }
       } else {
         if (!name.trim()) throw new Error("Please enter your name");
         
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              full_name: name,
-            },
-          },
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const fbUser = userCredential.user;
+
+        // Update profile with name
+        await updateProfile(fbUser, {
+            displayName: name
         });
 
-        if (error) throw error;
-        
-        // Supabase might return a user even if email confirmation is required
-        // But for immediate access in this app flow:
-        if (data.user) {
-             onAuthSuccess({
-               id: data.user.id,
-               email: data.user.email || '',
-               name: name
-           });
-        } else {
-            setError("Check your email for a confirmation link!");
-        }
+        onAuthSuccess({
+            id: fbUser.uid,
+            email: fbUser.email || '',
+            name: name
+        });
       }
     } catch (err: any) {
       console.error("Auth Error:", err);
-      setError(err.message || "An unexpected error occurred.");
+      let msg = "An unexpected error occurred.";
+      if (err.code === 'auth/invalid-credential') msg = "Invalid email or password.";
+      if (err.code === 'auth/email-already-in-use') msg = "Email already registered.";
+      if (err.code === 'auth/weak-password') msg = "Password should be at least 6 characters.";
+      setError(msg);
     } finally {
       setLoading(false);
     }
   };
 
-  if (!isSupabaseConfigured()) {
+  if (!isFirebaseConfigured()) {
       return (
           <div className="min-h-screen flex items-center justify-center bg-rose-50 p-4">
               <div className="bg-white p-8 rounded-2xl shadow-xl text-center max-w-md">
                   <AlertCircle className="mx-auto text-rose-500 mb-4" size={48} />
                   <h2 className="text-xl font-bold text-slate-800 mb-2">Configuration Error</h2>
                   <p className="text-slate-600 mb-4">
-                      The app cannot connect to the database. API keys are missing.
+                      The app cannot connect to Firebase. API keys are missing.
                   </p>
                   <div className="text-left bg-slate-100 p-4 rounded-lg text-xs font-mono text-slate-700 overflow-x-auto">
-                      SUPABASE_URL<br/>
-                      SUPABASE_ANON_KEY
+                      FIREBASE_API_KEY<br/>
+                      FIREBASE_PROJECT_ID<br/>
+                      ... (See documentation)
                   </div>
                   <p className="text-slate-500 text-xs mt-4">Add these to Vercel Environment Variables and Redeploy.</p>
               </div>

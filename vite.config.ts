@@ -3,10 +3,8 @@ import react from '@vitejs/plugin-react';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  // Load env file based on `mode` in the current working directory.
   const env = loadEnv(mode, (process as any).cwd(), '');
   
-  // Helper to clean keys (remove accidental quotes)
   const cleanKey = (key: string | undefined) => {
     if (!key) return undefined;
     if (key.startsWith('"') || key.startsWith("'")) {
@@ -15,17 +13,16 @@ export default defineConfig(({ mode }) => {
     return key;
   };
 
-  const apiKey = cleanKey(process.env.API_KEY || env.API_KEY);
-  const supabaseUrl = cleanKey(process.env.SUPABASE_URL || env.SUPABASE_URL);
-  const supabaseKey = cleanKey(process.env.SUPABASE_ANON_KEY || env.SUPABASE_ANON_KEY);
-
   return {
     plugins: [react()],
     define: {
-      // Strictly define env vars to prevent browser crashes
-      'process.env.API_KEY': JSON.stringify(apiKey),
-      'process.env.SUPABASE_URL': JSON.stringify(supabaseUrl),
-      'process.env.SUPABASE_ANON_KEY': JSON.stringify(supabaseKey),
+      'process.env.API_KEY': JSON.stringify(cleanKey(process.env.API_KEY || env.API_KEY)),
+      'process.env.FIREBASE_API_KEY': JSON.stringify(cleanKey(process.env.FIREBASE_API_KEY || env.FIREBASE_API_KEY)),
+      'process.env.FIREBASE_AUTH_DOMAIN': JSON.stringify(cleanKey(process.env.FIREBASE_AUTH_DOMAIN || env.FIREBASE_AUTH_DOMAIN)),
+      'process.env.FIREBASE_PROJECT_ID': JSON.stringify(cleanKey(process.env.FIREBASE_PROJECT_ID || env.FIREBASE_PROJECT_ID)),
+      'process.env.FIREBASE_STORAGE_BUCKET': JSON.stringify(cleanKey(process.env.FIREBASE_STORAGE_BUCKET || env.FIREBASE_STORAGE_BUCKET)),
+      'process.env.FIREBASE_MESSAGING_SENDER_ID': JSON.stringify(cleanKey(process.env.FIREBASE_MESSAGING_SENDER_ID || env.FIREBASE_MESSAGING_SENDER_ID)),
+      'process.env.FIREBASE_APP_ID': JSON.stringify(cleanKey(process.env.FIREBASE_APP_ID || env.FIREBASE_APP_ID)),
     },
   };
 });

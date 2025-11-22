@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Calendar, Layout, BarChart3, CheckCircle2, Target, Menu, X, Home, ListChecks, PieChart, Activity, RotateCcw, Bell, LogOut, Medal } from 'lucide-react';
 import { format } from 'date-fns';
-import { supabase, isSupabaseConfigured } from './services/supabaseClient';
+import { auth, db, isFirebaseConfigured } from './services/firebase';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 import { Habit, Goal, Category, AppState, Frequency, DailyLog, User, Badge } from './types';
 import { AuthScreen } from './components/AuthScreen';
@@ -22,71 +24,47 @@ const App = () => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved');
 
-  // --- Authentication & Data Loading (Supabase) ---
+  // --- Authentication & Data Loading (Firebase) ---
   
   useEffect(() => {
-    if (!isSupabaseConfigured() || !supabase) {
+    if (!isFirebaseConfigured() || !auth) {
         setIsLoaded(true);
         return;
     }
 
-    // Local reference to guarantee non-null in closures
-    const client = supabase;
-
-    // Check active session
-    client.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-         const userData: User = {
-             id: session.user.id,
-             email: session.user.email || '',
-             name: session.user.user_metadata.full_name || session.user.email?.split('@')[0] || 'Architect'
-         };
-         setUser(userData);
-         loadUserData(userData.id);
-      } else {
-         setIsLoaded(true);
-      }
+    const unsubscribe = onAuthStateChanged(auth, (fbUser) => {
+        if (fbUser) {
+            const userData: User = {
+                id: fbUser.uid,
+                email: fbUser.email || '',
+                name: fbUser.displayName || fbUser.email?.split('@')[0] || 'Architect'
+            };
+            setUser(userData);
+            loadUserData(userData.id);
+        } else {
+            setUser(null);
+            setState({ habits: [], goals: [], logs: {}, earnedBadges: [] });
+            setIsLoaded(true);
+        }
     });
 
-    const {
-      data: { subscription },
-    } = client.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-         const userData: User = {
-             id: session.user.id,
-             email: session.user.email || '',
-             name: session.user.user_metadata.full_name || session.user.email?.split('@')[0] || 'Architect'
-         };
-         setUser(userData);
-         loadUserData(userData.id);
-      } else {
-         setUser(null);
-         setState({ habits: [], goals: [], logs: {}, earnedBadges: [] });
-      }
-    });
-
-    return () => subscription.unsubscribe();
+    return () => unsubscribe();
   }, []);
 
   const loadUserData = async (userId: string) => {
-    if (!supabase) return;
-    const client = supabase;
+    if (!db) return;
 
     try {
-      const { data, error } = await client
-        .from('user_data')
-        .select('content')
-        .eq('user_id', userId)
-        .single();
+      const docRef = doc(db, "users", userId);
+      const docSnap = await getDoc(docRef);
 
-      if (error && error.code !== 'PGRST116') {
-          console.error("Error loading data:", error);
-      }
-
-      if (data && data.content) {
-        const loadedState = data.content as AppState;
-        if (!loadedState.earnedBadges) loadedState.earnedBadges = [];
-        setState(loadedState);
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.content) {
+            const loadedState = JSON.parse(data.content) as AppState;
+            if (!loadedState.earnedBadges) loadedState.earnedBadges = [];
+            setState(loadedState);
+        }
       } else {
         console.log("No data found for user, starting fresh.");
       }
@@ -97,23 +75,19 @@ const App = () => {
     }
   };
 
-  // Debounced Save Data to Supabase
+  // Debounced Save Data to Firebase
   useEffect(() => {
-    if (!isLoaded || !user || !supabase) return;
-    const client = supabase;
-
+    if (!isLoaded || !user || !db) return;
+    
     const saveData = async () => {
       setSaveStatus('saving');
       try {
-        const { error } = await client
-            .from('user_data')
-            .upsert({ 
-                user_id: user.id, 
-                content: state as any, // Cast to any for JSONB compatibility
-                updated_at: new Date().toISOString() 
-            });
+        const docRef = doc(db, "users", user.id);
+        await setDoc(docRef, {
+            content: JSON.stringify(state),
+            updatedAt: new Date().toISOString()
+        }, { merge: true });
 
-        if (error) throw error;
         setSaveStatus('saved');
       } catch (err) {
         console.error("Error saving data:", err);
@@ -126,14 +100,11 @@ const App = () => {
   }, [state, isLoaded, user]);
 
   const handleAuthSuccess = (userData: User) => {
-    setUser(userData);
-    loadUserData(userData.id);
+    // Auth state listener will handle the rest
   };
 
   const handleSignOut = async () => {
-    if (supabase) await supabase.auth.signOut();
-    setUser(null);
-    setState({ habits: [], goals: [], logs: {}, earnedBadges: [] });
+    if (auth) await signOut(auth);
   };
 
 
