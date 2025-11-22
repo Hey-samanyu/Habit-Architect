@@ -53,9 +53,10 @@ const App = () => {
 
   const loadUserData = async (userId: string) => {
     if (!db) return;
+    const firestore = db; // Local reference to ensure type safety
 
     try {
-      const docRef = doc(db, "users", userId);
+      const docRef = doc(firestore, "users", userId);
       const docSnap = await getDoc(docRef);
 
       if (docSnap.exists()) {
@@ -78,11 +79,12 @@ const App = () => {
   // Debounced Save Data to Firebase
   useEffect(() => {
     if (!isLoaded || !user || !db) return;
+    const firestore = db; // Local reference to ensure type safety inside async closure
     
     const saveData = async () => {
       setSaveStatus('saving');
       try {
-        const docRef = doc(db, "users", user.id);
+        const docRef = doc(firestore, "users", user.id);
         await setDoc(docRef, {
             content: JSON.stringify(state),
             updatedAt: new Date().toISOString()
