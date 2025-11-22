@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Bot, Sparkles, Minus, ChevronRight, Zap, Plus, Target, Activity, Mic, MicOff, Volume2 } from 'lucide-react';
-import { Chat, GenerateContentResponse } from "@google/genai";
+import { MessageCircle, X, Send, Bot, Sparkles, Minus, ChevronRight, Zap, Plus, Target, Activity, Mic, MicOff, Volume2, Trash2 } from 'lucide-react';
+import { Chat, GenerateContentResponse, Content } from "@google/genai";
 import { Habit, Goal, DailyLog } from '../types';
 import { createChatSession, speakText } from '../services/geminiService';
 
@@ -22,12 +22,27 @@ const QUICK_ACTIONS = [
   "Help me set a new goal 🎯"
 ];
 
+const STORAGE_KEY = 'habit_architect_chat_history';
+
 export const KairoChat: React.FC<KairoChatProps> = ({ habits, goals, logs }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [showTeaser, setShowTeaser] = useState(true);
-  const [messages, setMessages] = useState<Message[]>([
-    { role: 'model', text: "Hey! I'm Kairo. Ready to crush it today? 🌟" }
-  ]);
+  
+  // Initialize messages from Local Storage
+  const [messages, setMessages] = useState<Message[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch (e) {
+          console.error("Failed to parse chat history", e);
+        }
+      }
+    }
+    return [{ role: 'model', text: "Hey! I'm Kairo. Ready to crush it today? 🌟" }];
+  });
+
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [showContextPicker, setShowContextPicker] = useState(false);
@@ -37,6 +52,11 @@ export const KairoChat: React.FC<KairoChatProps> = ({ habits, goals, logs }) => 
   const chatSessionRef = useRef<Chat | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
+
+  // Save to Local Storage on change
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+  }, [messages]);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -51,7 +71,15 @@ export const KairoChat: React.FC<KairoChatProps> = ({ habits, goals, logs }) => 
   // Initialize chat session when opened
   useEffect(() => {
     if (isOpen && !chatSessionRef.current) {
-      const session = createChatSession(habits, goals, logs);
+      
+      // Convert current messages to Gemini History format
+      const history: Content[] = messages.map(m => ({
+        role: m.role,
+        parts: [{ text: m.text }]
+      }));
+
+      const session = createChatSession(habits, goals, logs, history);
+      
       if (session) {
         chatSessionRef.current = session;
       } else {
@@ -91,6 +119,17 @@ export const KairoChat: React.FC<KairoChatProps> = ({ habits, goals, logs }) => 
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
+    }
+  };
+
+  const clearHistory = () => {
+    if(confirm("Clear chat history?")) {
+        const initialMsg: Message = { role: 'model', text: "History cleared! What should we focus on now?" };
+        setMessages([initialMsg]);
+        localStorage.removeItem(STORAGE_KEY);
+        chatSessionRef.current = null; // Force re-init
+        setIsOpen(false); 
+        setTimeout(() => setIsOpen(true), 100); // Toggle to trigger re-init
     }
   };
 
@@ -208,12 +247,21 @@ export const KairoChat: React.FC<KairoChatProps> = ({ habits, goals, logs }) => 
             </p>
           </div>
         </div>
-        <button 
-          onClick={() => setIsOpen(false)}
-          className="p-2 hover:bg-white/10 rounded-full transition-colors relative z-10"
-        >
-          <Minus size={24} />
-        </button>
+        <div className="flex items-center gap-1 relative z-10">
+            <button 
+              onClick={clearHistory}
+              className="p-2 hover:bg-white/10 rounded-full transition-colors text-indigo-100 hover:text-white"
+              title="Clear Chat History"
+            >
+              <Trash2 size={20} />
+            </button>
+            <button 
+              onClick={() => setIsOpen(false)}
+              className="p-2 hover:bg-white/10 rounded-full transition-colors"
+            >
+              <Minus size={24} />
+            </button>
+        </div>
       </div>
 
       {/* Messages Area */}

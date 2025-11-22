@@ -1,4 +1,4 @@
-import { GoogleGenAI, Chat, Modality } from "@google/genai";
+import { GoogleGenAI, Chat, Modality, Content } from "@google/genai";
 import { format, subDays } from 'date-fns';
 import { Habit, Goal, DailyLog } from "../types";
 
@@ -158,7 +158,8 @@ export const generateDailyOverview = async (
 export const createChatSession = (
   habits: Habit[],
   goals: Goal[],
-  logs: Record<string, DailyLog>
+  logs: Record<string, DailyLog>,
+  history: Content[] = []
 ): Chat | null => {
   const ai = getAIClient();
   if (!ai) return null;
@@ -248,6 +249,7 @@ export const createChatSession = (
     config: {
       systemInstruction,
       temperature: 0.7,
-    }
+    },
+    history: history
   });
 };
