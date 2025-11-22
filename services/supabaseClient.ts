@@ -1,12 +1,3 @@
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
-
-export const isSupabaseConfigured = () => {
-  return !!supabaseUrl && !!supabaseAnonKey;
-};
-
-export const supabase = isSupabaseConfigured()
-  ? createClient(supabaseUrl!, supabaseAnonKey!)
-  : null;
+// Supabase integration removed.
+// Authentication is now handled via Local Storage in AuthScreen.tsx
+export const supabase = null;

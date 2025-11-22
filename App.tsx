@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Calendar, Layout, BarChart3, CheckCircle2, Target, Menu, X, Home, ListChecks, PieChart, Activity, RotateCcw, Bell, LogOut, Medal, PartyPopper } from 'lucide-react';
 import { format, subDays } from 'date-fns';
-import { supabase } from './services/supabaseClient';
 
 import { Habit, Goal, Category, AppState, Frequency, DailyLog, User, Badge } from './types';
 import { AuthScreen } from './components/AuthScreen';
@@ -82,79 +81,50 @@ const App = () => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved');
 
-  // --- Authentication & Data Loading (Supabase) ---
+  // --- Authentication & Data Loading (Local Storage) ---
   
   useEffect(() => {
-    const client = supabase;
-    if (!client) {
-        // If Supabase is not configured, we could fall back to local simulation
-        // but for this request we assume user wants cloud.
+    const sessionStr = localStorage.getItem('habit_architect_session');
+    if (sessionStr) {
+      try {
+        const userData = JSON.parse(sessionStr);
+        setUser(userData);
+        loadUserData(userData.id);
+      } catch (e) {
+        console.error("Invalid session", e);
         setIsLoaded(true);
-        return;
-    }
-
-    const { data: { subscription } } = client.auth.onAuthStateChange(
-      async (_event, session) => {
-        if (session?.user) {
-          const userData: User = {
-            id: session.user.id,
-            email: session.user.email!,
-            name: session.user.user_metadata.full_name || session.user.email!,
-          };
-          setUser(userData);
-          await loadUserData(session.user.id, client);
-        } else {
-          setUser(null);
-          setState({ habits: [], goals: [], logs: {}, earnedBadges: [] });
-          setIsLoaded(true);
-        }
       }
-    );
-
-    return () => subscription.unsubscribe();
+    } else {
+      setIsLoaded(true);
+    }
   }, []);
 
-  const loadUserData = async (userId: string, client: any) => {
+  const loadUserData = (userId: string) => {
     try {
-        const { data, error } = await client
-            .from('user_data')
-            .select('content')
-            .eq('user_id', userId)
-            .single();
-
-        if (data && data.content) {
-             // Merge with defaults to ensure new fields exist
-             const loadedState = data.content as AppState;
-             if (!loadedState.earnedBadges) loadedState.earnedBadges = [];
-             setState(loadedState);
-        } else {
-            // First time user, insert empty or default state
-             console.log("No data found, starting fresh.");
-        }
+      const dataStr = localStorage.getItem(`habit_architect_data_${userId}`);
+      if (dataStr) {
+        const loadedState = JSON.parse(dataStr);
+        if (!loadedState.earnedBadges) loadedState.earnedBadges = [];
+        setState(loadedState);
+      } else {
+        // First time user, could start fresh or with sample data
+        console.log("No data found for user, starting fresh.");
+      }
     } catch (err) {
-        console.error("Error loading data:", err);
+      console.error("Error loading data:", err);
     } finally {
-        setIsLoaded(true);
+      setIsLoaded(true);
     }
   };
 
-  // Debounced Save Data to Supabase
+  // Debounced Save Data to LocalStorage
   useEffect(() => {
-    const client = supabase;
-    if (!isLoaded || !user || !client) return;
+    if (!isLoaded || !user) return;
 
-    const saveData = async () => {
+    const saveData = () => {
       setSaveStatus('saving');
       try {
-        const { error } = await client
-          .from('user_data')
-          .upsert({ 
-            user_id: user.id, 
-            content: state,
-            updated_at: new Date().toISOString()
-          });
-        
-        if (error) throw error;
+        localStorage.setItem(`habit_architect_data_${user.id}`, JSON.stringify(state));
         setSaveStatus('saved');
       } catch (err) {
         console.error("Error saving data:", err);
@@ -162,13 +132,19 @@ const App = () => {
       }
     };
 
-    const timeoutId = setTimeout(saveData, 1000);
+    const timeoutId = setTimeout(saveData, 500);
     return () => clearTimeout(timeoutId);
   }, [state, isLoaded, user]);
 
-  const handleSignOut = async () => {
-      const client = supabase;
-      if (client) await client.auth.signOut();
+  const handleAuthSuccess = (userData: User) => {
+    setUser(userData);
+    loadUserData(userData.id);
+  };
+
+  const handleSignOut = () => {
+    localStorage.removeItem('habit_architect_session');
+    setUser(null);
+    setState({ habits: [], goals: [], logs: {}, earnedBadges: [] });
   };
 
 
@@ -304,7 +280,7 @@ const App = () => {
 
   // --- Auth Guard ---
   if (!user) {
-      return <AuthScreen onAuthSuccess={() => {}} />;
+      return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
   }
 
   const todayKey = getTodayKey();
@@ -489,7 +465,7 @@ const App = () => {
           <div className="mt-auto pt-6 border-t border-slate-800 space-y-2">
               <div className="px-4 pb-4">
                   <span className={`text-xs font-bold px-2 py-1 rounded-full border ${saveStatus === 'error' ? 'border-rose-800 text-rose-400 bg-rose-950/30' : 'border-emerald-800 text-emerald-400 bg-emerald-950/30'}`}>
-                    {saveStatus === 'saving' ? 'Syncing...' : saveStatus === 'error' ? 'Sync Error' : 'Cloud Synced'}
+                    {saveStatus === 'saving' ? 'Syncing...' : saveStatus === 'error' ? 'Sync Error' : 'Local Data'}
                   </span>
               </div>
               <button onClick={handleSignOut} className="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-rose-400 transition-colors text-sm font-medium w-full">

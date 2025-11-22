@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Lock, Mail, ArrowRight, Loader2, Layout, AlertCircle, User as UserIcon } from 'lucide-react';
-import { supabase } from '../services/supabaseClient';
+import { User } from '../types';
 
 interface AuthScreenProps {
-  onAuthSuccess: (user: any) => void;
+  onAuthSuccess: (user: User) => void;
 }
 
 export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
@@ -19,53 +19,50 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
     setLoading(true);
     setError(null);
 
-    if (!supabase) {
-      setError("Supabase is not configured. Please add API keys to Vercel.");
-      setLoading(false);
-      return;
-    }
+    // Simulate network delay
+    setTimeout(() => {
+      try {
+        const usersStr = localStorage.getItem('habit_architect_users');
+        const users = usersStr ? JSON.parse(usersStr) : [];
 
-    try {
-      if (isLogin) {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (error) throw error;
-        // Auth state change listener in App.tsx will handle the rest
-      } else {
-        if (!name.trim()) throw new Error("Please enter your name.");
-        
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              full_name: name,
-            },
-          },
-        });
-        if (error) throw error;
-        if (data.user) {
-           // Login immediately after signup if auto-confirm is enabled, or user needs to check email
-           // We attempt sign in, usually Supabase requires email confirmation unless disabled
-           const signIn = await supabase.auth.signInWithPassword({ email, password });
-           if (signIn.error) {
-             // If sign in fails, it might be because email needs confirmation
-             if (!signIn.error.message.includes("Invalid login credentials")) {
-                 setError("Account created! Please check your email to confirm before logging in.");
-                 setIsLogin(true);
-                 setLoading(false);
-                 return;
-             }
-           }
+        if (isLogin) {
+          // LOGIN LOGIC
+          const foundUser = users.find((u: any) => u.email === email && u.password === password);
+          
+          if (foundUser) {
+            const userData: User = { id: foundUser.id, name: foundUser.name, email: foundUser.email };
+            localStorage.setItem('habit_architect_session', JSON.stringify(userData));
+            onAuthSuccess(userData);
+          } else {
+            throw new Error("Invalid email or password.");
+          }
+        } else {
+          // SIGNUP LOGIC
+          if (!name.trim()) throw new Error("Please enter your name.");
+          
+          const exists = users.find((u: any) => u.email === email);
+          if (exists) throw new Error("User already exists with this email.");
+
+          const newUser = {
+            id: crypto.randomUUID(),
+            name,
+            email,
+            password // In a real app, never store passwords plainly!
+          };
+
+          users.push(newUser);
+          localStorage.setItem('habit_architect_users', JSON.stringify(users));
+          
+          const userData: User = { id: newUser.id, name: newUser.name, email: newUser.email };
+          localStorage.setItem('habit_architect_session', JSON.stringify(userData));
+          onAuthSuccess(userData);
         }
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
       }
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+    }, 800);
   };
 
   return (
