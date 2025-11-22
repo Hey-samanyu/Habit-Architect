@@ -19,6 +19,8 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
+    
+    /* Explicitly only include Vite client types */
     "types": ["vite/client"]
   },
   "include": ["**/*.ts", "**/*.tsx"],
