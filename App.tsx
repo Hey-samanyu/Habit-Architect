@@ -415,9 +415,10 @@ const App = () => {
             </div>
             <div className="flex items-center gap-4">
                 <div className="flex items-center gap-3 text-sm font-medium text-slate-600">
-                    <span className="hidden md:inline">{user.email}</span>
+                    {/* Display Name preferentially, fallback to Email */}
+                    <span className="hidden md:inline">{user.name || user.email}</span>
                     <div className="w-8 h-8 bg-indigo-100 rounded-full border border-indigo-200 flex items-center justify-center text-indigo-700 font-bold text-xs uppercase">
-                        {user.email?.[0] || 'U'}
+                        {user.name?.[0] || user.email?.[0] || 'U'}
                     </div>
                 </div>
             </div>
@@ -430,7 +431,7 @@ const App = () => {
                 {/* Hero */}
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                     <div>
-                        <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">{getGreeting()}</h2>
+                        <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">{getGreeting()}, {user.name ? user.name.split(' ')[0] : 'Architect'}</h2>
                         <p className="text-slate-500 mt-1">Here's what's happening with your goals today.</p>
                     </div>
                     <div className="flex gap-3">

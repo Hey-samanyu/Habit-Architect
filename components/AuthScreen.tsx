@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Lock, Mail, ArrowRight, Loader2, Layout, AlertCircle } from 'lucide-react';
+import { Lock, Mail, ArrowRight, Loader2, Layout, AlertCircle, User as UserIcon } from 'lucide-react';
 import { User } from '../types';
 
 interface AuthScreenProps {
@@ -8,6 +8,7 @@ interface AuthScreenProps {
 
 export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
   const [isLogin, setIsLogin] = useState(true);
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -37,8 +38,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
           throw new Error("User with this email already exists");
         }
         
+        if (!name.trim()) {
+           throw new Error("Please enter your name");
+        }
+
         const newUser: User = {
           id: crypto.randomUUID(),
+          name: name.trim(),
           email,
           password
         };
@@ -73,6 +79,27 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
         )}
 
         <form onSubmit={handleAuth} className="space-y-5">
+          
+          {/* Name Field - Only show for Sign Up */}
+          {!isLogin && (
+            <div className="animate-in slide-in-from-top-2 fade-in duration-300">
+                <label className="block text-sm font-bold text-slate-700 mb-1.5 ml-1">Full Name</label>
+                <div className="relative">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                    <UserIcon size={20} />
+                </div>
+                <input
+                    type="text"
+                    required={!isLogin}
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50/50 outline-none transition-all font-medium text-slate-800 placeholder:text-slate-400"
+                    placeholder="John Doe"
+                />
+                </div>
+            </div>
+          )}
+
           <div>
             <label className="block text-sm font-bold text-slate-700 mb-1.5 ml-1">Email Address</label>
             <div className="relative">
