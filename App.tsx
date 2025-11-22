@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Calendar, Layout, BarChart3, CheckCircle2, Target, Menu, X, Home, ListChecks, PieChart, Activity, RotateCcw, Bell, LogOut, Loader2 } from 'lucide-react';
+import { Plus, Calendar, Layout, BarChart3, CheckCircle2, Target, Menu, X, Home, ListChecks, PieChart, Activity, RotateCcw, Bell, LogOut } from 'lucide-react';
 import { format, subDays } from 'date-fns';
-import { supabase } from './services/supabaseClient';
+
 import { Habit, Goal, Category, AppState, Frequency, DailyLog, User } from './types';
 import { HabitTracker } from './components/HabitTracker';
 import { GoalTracker } from './components/GoalTracker';
@@ -128,120 +128,48 @@ const generateFakeData = (): AppState => {
 };
 
 const App = () => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    const savedUser = localStorage.getItem('habit_architect_current_user');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
+
   const [state, setState] = useState<AppState>({ habits: [], goals: [], logs: {} });
-  const [isDataLoading, setIsDataLoading] = useState(false);
 
-  // Supabase Auth Listener
-  useEffect(() => {
-    // Check active session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setUser({
-          id: session.user.id,
-          email: session.user.email,
-          name: session.user.user_metadata.full_name || 'User'
-        });
-      }
-    });
-
-    // Listen for changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        setUser({
-          id: session.user.id,
-          email: session.user.email,
-          name: session.user.user_metadata.full_name || 'User'
-        });
-      } else {
-        setUser(null);
-        setState({ habits: [], goals: [], logs: {} });
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  // Load Data from Supabase on User Login
+  // Load data when User changes
   useEffect(() => {
     if (!user) return;
 
-    const loadUserData = async () => {
-      setIsDataLoading(true);
-      const { data, error } = await supabase
-        .from('user_data')
-        .select('content')
-        .eq('user_id', user.id)
-        .single();
-
-      if (error && error.code !== 'PGRST116') { // PGRST116 is "Row not found" (new user)
-        console.error('Error loading data:', error);
-      }
-
-      if (data && data.content && Object.keys(data.content).length > 0) {
-         // Migration checks can go here if needed
-         const loadedState = data.content as AppState;
-         // Ensure frequency exists on old data
-         loadedState.habits = loadedState.habits.map(h => ({...h, frequency: h.frequency || Frequency.DAILY}));
-         setState(loadedState);
-      } else {
-        // New user with no data? Give them fake data for demo or empty
-        const initialData = generateFakeData();
-        setState(initialData);
-        // Save it immediately so table row is created
-        saveUserData(user.id, initialData);
-      }
-      setIsDataLoading(false);
-    };
-
-    loadUserData();
+    const userKey = `habit_architect_data_${user.username}`;
+    const saved = localStorage.getItem(userKey);
+    
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Migration/Safety check for existing data structure
+      parsed.habits = parsed.habits.map((h: any) => ({
+        ...h,
+        frequency: h.frequency || Frequency.DAILY
+      }));
+      setState(parsed);
+    } else {
+      // New user? Give them fake data for demo purposes or empty
+      // Let's give fake data so the UI isn't empty
+      setState(generateFakeData());
+    }
   }, [user]);
 
-  // Debounced Save to Supabase
-  // We use a ref to track if the initial load has happened to avoid overwriting DB with empty state on mount
-  const isInitialLoadDone = useRef(false);
-  const saveTimeoutRef = useRef<any>(null);
-
-  const saveUserData = async (userId: string, data: AppState) => {
-     const { error } = await supabase
-      .from('user_data')
-      .upsert({ 
-          user_id: userId, 
-          content: data, 
-          updated_at: new Date().toISOString() 
-      });
-      
-      if (error) console.error("Error saving data:", error);
-  };
-
+  // Save data when State changes
   useEffect(() => {
-    if (!user || !isDataLoading) {
-        isInitialLoadDone.current = true;
-    }
-  }, [isDataLoading, user]);
-
-  useEffect(() => {
-    if (!user || isDataLoading) return;
-    
-    // Clear existing timeout
-    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-
-    // Debounce save by 1 second
-    saveTimeoutRef.current = setTimeout(() => {
-        saveUserData(user.id, state);
-    }, 1000);
-
-    return () => {
-        if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    };
-  }, [state, user, isDataLoading]);
+    if (!user) return;
+    const userKey = `habit_architect_data_${user.username}`;
+    localStorage.setItem(userKey, JSON.stringify(state));
+  }, [state, user]);
 
 
   const [isHabitModalOpen, setHabitModalOpen] = useState(false);
   const [isGoalModalOpen, setGoalModalOpen] = useState(false);
   const [currentHabitTab, setCurrentHabitTab] = useState<Frequency>(Frequency.DAILY);
-  const [isSidebarOpen, setSidebarOpen] = useState(false); 
-  const [activeSection, setActiveSection] = useState('dashboard'); 
+  const [isSidebarOpen, setSidebarOpen] = useState(false); // For mobile
+  const [activeSection, setActiveSection] = useState('dashboard'); // For highlighting nav
   
   const mainRef = useRef<HTMLDivElement>(null);
 
@@ -300,8 +228,8 @@ const App = () => {
 
     const observerOptions = {
       root: main,
-      threshold: 0.2, 
-      rootMargin: '-10% 0px -50% 0px' 
+      threshold: 0.2, // Trigger when 20% of the section is visible
+      rootMargin: '-10% 0px -50% 0px' // Offset to trigger closer to top
     };
 
     const observer = new IntersectionObserver((entries) => {
@@ -313,6 +241,7 @@ const App = () => {
         }
       });
       
+      // Check if we are at the very top for Dashboard
       if (main.scrollTop < 100) {
         setActiveSection('dashboard');
       }
@@ -321,8 +250,9 @@ const App = () => {
     const sections = document.querySelectorAll('section[id]');
     sections.forEach((section) => observer.observe(section));
 
+    // Also watch the hero section if possible, or just rely on scrollTop logic
     return () => observer.disconnect();
-  }, [user]); 
+  }, [user]); // Re-run if user changes (layout might re-render)
 
 
   const todayKey = getTodayKey();
@@ -338,15 +268,20 @@ const App = () => {
 
   // --- Actions ---
   const resetData = () => {
-      if(confirm("Are you sure you want to reset all data? This will be saved to your account.")) {
+      if(confirm("Are you sure you want to reset all data and load sample data?")) {
           const fakeData = generateFakeData();
           setState(fakeData);
       }
   }
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    // State clearing is handled by the onAuthStateChange listener
+  const handleLogin = (loggedInUser: User) => {
+    setUser(loggedInUser);
+    localStorage.setItem('habit_architect_current_user', JSON.stringify(loggedInUser));
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    localStorage.removeItem('habit_architect_current_user');
   };
 
   const openHabitModal = () => {
@@ -463,17 +398,7 @@ const App = () => {
 
   // If not logged in, show Auth Screen
   if (!user) {
-    return <AuthScreen onLoginSuccess={() => {}} />; // handled by auth state listener
-  }
-
-  // Show Loading Screen while fetching initial data
-  if (isDataLoading) {
-      return (
-          <div className="h-screen w-full flex flex-col items-center justify-center bg-slate-50 text-indigo-600">
-              <Loader2 className="animate-spin mb-4" size={40} />
-              <p className="font-bold text-slate-600 animate-pulse">Loading your habits...</p>
-          </div>
-      )
+    return <AuthScreen onLogin={handleLogin} />;
   }
 
   return (
@@ -544,7 +469,7 @@ const App = () => {
           <div className="mt-auto pt-6 border-t border-slate-800 space-y-2">
               <button onClick={resetData} className="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-rose-400 transition-colors text-sm font-medium w-full">
                   <RotateCcw size={18} />
-                  Reset Data
+                  Reset Demo Data
               </button>
                <button onClick={handleLogout} className="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-indigo-300 transition-colors text-sm font-medium w-full">
                   <LogOut size={18} />

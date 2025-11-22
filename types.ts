@@ -14,8 +14,7 @@ export enum Frequency {
 }
 
 export interface User {
-  id: string;
-  email?: string;
+  username: string;
   name: string;
 }
 
@@ -43,12 +42,14 @@ export interface Goal {
 export interface DailyLog {
   date: string;
   completedHabitIds: string[];
-  goalProgress: Record<string, number>; 
+  goalProgress: Record<string, number>; // goalId -> value added today (incremental) OR total (snapshot)? Let's do snapshot for simplicity in this MVP or incremental. Let's stick to current absolute value in Goal object, but maybe log for history.
+  // For simplicity, we will track current goal progress in the Goal object itself, 
+  // and just use DailyLog to track if habits were done that day.
   aiAnalysis?: string;
 }
 
 export interface AppState {
   habits: Habit[];
   goals: Goal[];
-  logs: Record<string, DailyLog>; 
+  logs: Record<string, DailyLog>; // date -> log
 }
