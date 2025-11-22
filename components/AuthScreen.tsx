@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Lock, Mail, ArrowRight, Loader2, Layout, AlertCircle, User as UserIcon, KeyRound } from 'lucide-react';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, sendPasswordResetEmail } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, sendPasswordResetEmail, sendEmailVerification } from 'firebase/auth';
 import { auth, isFirebaseConfigured } from '../services/firebase';
 import { User } from '../types';
 
@@ -33,7 +33,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
     try {
       if (isResetMode) {
         await sendPasswordResetEmail(auth, email);
-        setSuccessMessage("Password reset email sent! Check your inbox.");
+        setSuccessMessage("Password reset email sent! Check your inbox (and spam).");
         setIsResetMode(false);
       } else if (isLogin) {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
@@ -53,6 +53,12 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
         await updateProfile(fbUser, {
             displayName: name
         });
+
+        // Send Verification Email
+        await sendEmailVerification(fbUser);
+        
+        // Explicit feedback
+        alert(`Account created successfully!\n\nA verification email has been sent to ${email}.\nPlease check your inbox and spam folder.`);
 
         onAuthSuccess({
             id: fbUser.uid,
