@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
-import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
-import { Lock, Mail, ArrowRight, Loader2, AlertCircle, Layout } from 'lucide-react';
+import { Lock, Mail, ArrowRight, Loader2, Layout, AlertCircle } from 'lucide-react';
+import { User } from '../types';
 
-export const AuthScreen = () => {
+interface AuthScreenProps {
+  onAuthSuccess: (user: User) => void;
+}
+
+export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -14,25 +18,34 @@ export const AuthScreen = () => {
     setLoading(true);
     setError(null);
 
-    if (!supabase) {
-        setError("Supabase is not configured. Please check your Vercel environment variables.");
-        setLoading(false);
-        return;
-    }
+    // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 800));
 
     try {
+      const usersStr = localStorage.getItem('habit_architect_users');
+      const users: User[] = usersStr ? JSON.parse(usersStr) : [];
+
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (error) throw error;
+        const user = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password);
+        if (user) {
+          onAuthSuccess(user);
+        } else {
+          throw new Error("Invalid email or password");
+        }
       } else {
-        const { error } = await supabase.auth.signUp({
+        if (users.some(u => u.email.toLowerCase() === email.toLowerCase())) {
+          throw new Error("User with this email already exists");
+        }
+        
+        const newUser: User = {
+          id: crypto.randomUUID(),
           email,
-          password,
-        });
-        if (error) throw error;
+          password
+        };
+        
+        const updatedUsers = [...users, newUser];
+        localStorage.setItem('habit_architect_users', JSON.stringify(updatedUsers));
+        onAuthSuccess(newUser);
       }
     } catch (err: any) {
       setError(err.message);
@@ -40,22 +53,6 @@ export const AuthScreen = () => {
       setLoading(false);
     }
   };
-
-  if (!isSupabaseConfigured()) {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
-            <div className="bg-white max-w-md w-full p-8 rounded-2xl shadow-xl border border-rose-100 text-center">
-                <div className="w-16 h-16 bg-rose-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <AlertCircle className="text-rose-500" size={32} />
-                </div>
-                <h2 className="text-xl font-bold text-slate-900 mb-2">Configuration Missing</h2>
-                <p className="text-slate-600 mb-6">
-                    The database connection keys are missing. Please add <code>SUPABASE_URL</code> and <code>SUPABASE_ANON_KEY</code> to your Vercel project settings and redeploy.
-                </p>
-            </div>
-        </div>
-      );
-  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4 font-sans">
@@ -69,7 +66,7 @@ export const AuthScreen = () => {
         </div>
 
         {error && (
-          <div className="mb-6 p-4 bg-rose-50 border border-rose-100 rounded-xl flex items-start gap-3">
+          <div className="mb-6 p-4 bg-rose-50 border border-rose-100 rounded-xl flex items-start gap-3 animate-in slide-in-from-top-2">
             <AlertCircle className="text-rose-500 shrink-0 mt-0.5" size={18} />
             <p className="text-sm text-rose-600 font-medium">{error}</p>
           </div>

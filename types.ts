@@ -15,7 +15,8 @@ export enum Frequency {
 
 export interface User {
   id: string;
-  email?: string;
+  email: string;
+  password?: string; // Stored locally for simulation
 }
 
 export interface Habit {
