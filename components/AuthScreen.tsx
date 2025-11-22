@@ -23,7 +23,22 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
     setTimeout(() => {
       try {
         const usersStr = localStorage.getItem('habit_architect_users');
-        const users = usersStr ? JSON.parse(usersStr) : [];
+        let users: any[] = [];
+        
+        if (usersStr) {
+            try {
+                const parsed = JSON.parse(usersStr);
+                if (Array.isArray(parsed)) {
+                    users = parsed;
+                } else {
+                    console.warn("User storage corrupted, resetting.");
+                    localStorage.removeItem('habit_architect_users');
+                }
+            } catch (e) {
+                console.warn("User storage corrupted, resetting.");
+                localStorage.removeItem('habit_architect_users');
+            }
+        }
 
         if (isLogin) {
           // LOGIN LOGIC
