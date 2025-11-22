@@ -32,8 +32,9 @@ const App = () => {
         return;
     }
 
-    const unsubscribe = onAuthStateChanged(auth, (fbUser) => {
-        if (fbUser) {
+    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
+        // STRICT VERIFICATION CHECK
+        if (fbUser && fbUser.emailVerified) {
             const userData: User = {
                 id: fbUser.uid,
                 email: fbUser.email || '',
@@ -42,6 +43,10 @@ const App = () => {
             setUser(userData);
             loadUserData(userData.id);
         } else {
+            // If user exists but not verified, or no user
+            if (fbUser && !fbUser.emailVerified) {
+                await signOut(auth);
+            }
             setUser(null);
             setState({ habits: [], goals: [], logs: {}, earnedBadges: [] });
             setIsLoaded(true);

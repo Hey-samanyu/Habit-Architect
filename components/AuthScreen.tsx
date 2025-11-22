@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Lock, Mail, ArrowRight, Loader2, Layout, AlertCircle, User as UserIcon, KeyRound } from 'lucide-react';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, sendPasswordResetEmail, sendEmailVerification } from 'firebase/auth';
+import { Lock, Mail, ArrowRight, Loader2, Layout, AlertCircle, User as UserIcon, KeyRound, CheckCircle2, RefreshCw } from 'lucide-react';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, sendPasswordResetEmail, sendEmailVerification, signOut } from 'firebase/auth';
 import { auth, isFirebaseConfigured } from '../services/firebase';
 import { User } from '../types';
 
@@ -10,7 +10,8 @@ interface AuthScreenProps {
 
 export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
   const [isLogin, setIsLogin] = useState(true);
-  const [isResetMode, setIsResetMode] = useState(false); // For "Forgot Password"
+  const [isResetMode, setIsResetMode] = useState(false);
+  const [isVerificationSent, setIsVerificationSent] = useState(false); // New state for verification view
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -38,12 +39,20 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
       } else if (isLogin) {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const fbUser = userCredential.user;
+
+        // STRICT CHECK: Is email verified?
+        if (!fbUser.emailVerified) {
+           await signOut(auth); // Force logout immediately
+           throw new Error("Email not verified. Please check your inbox.");
+        }
+
         onAuthSuccess({
             id: fbUser.uid,
             email: fbUser.email || '',
             name: fbUser.displayName || fbUser.email?.split('@')[0] || 'Architect'
         });
       } else {
+        // Sign Up Flow
         if (!name.trim()) throw new Error("Please enter your name");
         
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -57,26 +66,32 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
         // Send Verification Email
         await sendEmailVerification(fbUser);
         
-        // Explicit feedback
-        alert(`Account created successfully!\n\nA verification email has been sent to ${email}.\nPlease check your inbox and spam folder.`);
+        // CRITICAL: Sign out immediately so they can't access the app
+        await signOut(auth);
 
-        onAuthSuccess({
-            id: fbUser.uid,
-            email: fbUser.email || '',
-            name: name
-        });
+        // Switch to verification view
+        setIsVerificationSent(true);
       }
     } catch (err: any) {
       console.error("Auth Error:", err);
       let msg = "An unexpected error occurred.";
-      if (err.code === 'auth/invalid-credential') msg = "Invalid email or password.";
-      if (err.code === 'auth/email-already-in-use') msg = "Email already registered.";
-      if (err.code === 'auth/weak-password') msg = "Password should be at least 6 characters.";
-      if (err.code === 'auth/user-not-found') msg = "No account found with this email.";
+      if (err.message === "Email not verified. Please check your inbox.") msg = err.message;
+      else if (err.code === 'auth/invalid-credential') msg = "Invalid email or password.";
+      else if (err.code === 'auth/email-already-in-use') msg = "Email already registered.";
+      else if (err.code === 'auth/weak-password') msg = "Password should be at least 6 characters.";
+      else if (err.code === 'auth/user-not-found') msg = "No account found with this email.";
+      else if (err.code === 'auth/too-many-requests') msg = "Too many attempts. Please wait a moment.";
       setError(msg);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleBackToLogin = () => {
+      setIsVerificationSent(false);
+      setIsLogin(true);
+      setError(null);
+      setSuccessMessage(null);
   };
 
   if (!isFirebaseConfigured()) {
@@ -96,6 +111,35 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
                   <p className="text-slate-500 text-xs mt-4">Add these to Vercel Environment Variables and Redeploy.</p>
               </div>
           </div>
+      );
+  }
+
+  // Verification Sent Screen
+  if (isVerificationSent) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4 font-sans relative">
+            <div className="bg-white w-full max-w-md p-8 rounded-3xl shadow-xl border border-slate-100 text-center animate-in zoom-in duration-300">
+                <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Mail size={32} />
+                </div>
+                <h2 className="text-2xl font-extrabold text-slate-900 mb-2">Verify your Email</h2>
+                <p className="text-slate-600 mb-6">
+                    We've sent a verification link to <strong>{email}</strong>.
+                    <br/>Please check your inbox (and spam) and click the link to activate your account.
+                </p>
+                
+                <div className="p-4 bg-slate-50 rounded-xl text-sm text-slate-500 mb-6 border border-slate-200">
+                    After verifying, come back here and sign in.
+                </div>
+
+                <button 
+                    onClick={handleBackToLogin}
+                    className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 transition-all"
+                >
+                    Back to Sign In
+                </button>
+            </div>
+        </div>
       );
   }
 
