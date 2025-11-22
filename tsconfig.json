@@ -17,6 +17,13 @@
     "noFallthroughCasesInSwitch": true,
     "types": ["vite/client"]
   },
-  "include": ["./**/*.ts", "./**/*.tsx", "vite-env.d.ts"],
+  "include": [
+    "components",
+    "services",
+    "App.tsx",
+    "index.tsx",
+    "types.ts",
+    "vite-env.d.ts"
+  ],
   "exclude": ["node_modules", "dist", "vite.config.ts"]
 }

@@ -1,3 +1,6 @@
+// Fixed: Removed missing reference to vite/client
+// /// <reference types="vite/client" />
+
 export {};
 
 declare global {
@@ -12,7 +15,6 @@ declare global {
   }
 
   // Augment NodeJS.ProcessEnv to provide types for process.env variables
-  // This avoids "Cannot redeclare block-scoped variable 'process'" error
   namespace NodeJS {
     interface ProcessEnv {
       API_KEY?: string;
@@ -21,4 +23,6 @@ declare global {
       [key: string]: string | undefined;
     }
   }
+
+  // Fixed: Removed conflicting declaration of 'process'
 }
