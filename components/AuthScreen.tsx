@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Lock, Mail, ArrowRight, Loader2, Layout, AlertCircle, User as UserIcon } from 'lucide-react';
+import { Lock, Mail, ArrowRight, Loader2, Layout, AlertCircle, User as UserIcon, Trash2 } from 'lucide-react';
 import { User } from '../types';
 
 interface AuthScreenProps {
@@ -19,30 +19,33 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
     setLoading(true);
     setError(null);
 
-    // Simulate network delay
+    // Simulate network delay for better UX
     setTimeout(() => {
       try {
         const usersStr = localStorage.getItem('habit_architect_users');
         let users: any[] = [];
         
+        // ROBUST DATA LOADING
         if (usersStr) {
             try {
                 const parsed = JSON.parse(usersStr);
                 if (Array.isArray(parsed)) {
                     users = parsed;
                 } else {
-                    console.warn("User storage corrupted, resetting.");
-                    localStorage.removeItem('habit_architect_users');
+                    console.warn("User storage corrupted (not an array). Resetting user list.");
+                    // Don't throw, just start with empty array
+                    users = []; 
                 }
             } catch (e) {
-                console.warn("User storage corrupted, resetting.");
-                localStorage.removeItem('habit_architect_users');
+                console.warn("User storage corrupted (invalid JSON). Resetting user list.");
+                users = [];
             }
         }
 
         if (isLogin) {
           // LOGIN LOGIC
-          const foundUser = users.find((u: any) => u.email === email && u.password === password);
+          // Safe check using optional chaining just in case
+          const foundUser = users?.find((u: any) => u && u.email === email && u.password === password);
           
           if (foundUser) {
             const userData: User = { id: foundUser.id, name: foundUser.name, email: foundUser.email };
@@ -55,34 +58,44 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
           // SIGNUP LOGIC
           if (!name.trim()) throw new Error("Please enter your name.");
           
-          const exists = users.find((u: any) => u.email === email);
+          // Safe check for duplicates
+          const exists = users?.find((u: any) => u && u.email === email);
           if (exists) throw new Error("User already exists with this email.");
 
           const newUser = {
             id: crypto.randomUUID(),
             name,
             email,
-            password // In a real app, never store passwords plainly!
+            password // Note: In a real production app, passwords should be hashed!
           };
 
-          users.push(newUser);
-          localStorage.setItem('habit_architect_users', JSON.stringify(users));
+          const updatedUsers = [...users, newUser];
+          localStorage.setItem('habit_architect_users', JSON.stringify(updatedUsers));
           
           const userData: User = { id: newUser.id, name: newUser.name, email: newUser.email };
           localStorage.setItem('habit_architect_session', JSON.stringify(userData));
           onAuthSuccess(userData);
         }
       } catch (err: any) {
-        setError(err.message);
+        console.error("Auth Error:", err);
+        setError(err.message || "An unexpected error occurred.");
       } finally {
         setLoading(false);
       }
     }, 800);
   };
 
+  const handleFactoryReset = () => {
+      if (confirm("⚠️ FACTORY RESET\n\nThis will delete ALL accounts and data on this device.\nThis cannot be undone.\n\nAre you sure?")) {
+          localStorage.clear();
+          window.location.reload();
+      }
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4 font-sans">
-      <div className="bg-white w-full max-w-md p-8 rounded-3xl shadow-xl border border-slate-100">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4 font-sans relative">
+      <div className="bg-white w-full max-w-md p-8 rounded-3xl shadow-xl border border-slate-100 relative overflow-hidden">
+        
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center p-3 bg-indigo-600 rounded-xl shadow-lg shadow-indigo-200 mb-4">
             <Layout className="text-white" size={32} />
@@ -181,6 +194,17 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
             </button>
           </p>
         </div>
+      </div>
+      
+      {/* Emergency Reset Button */}
+      <div className="absolute bottom-4 right-4">
+          <button 
+            onClick={handleFactoryReset}
+            className="text-slate-300 hover:text-rose-500 transition-colors text-xs flex items-center gap-1"
+            title="Clear all data and reset"
+          >
+              <Trash2 size={12} /> Reset App Data
+          </button>
       </div>
     </div>
   );

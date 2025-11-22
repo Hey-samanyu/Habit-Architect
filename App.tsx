@@ -88,10 +88,17 @@ const App = () => {
     if (sessionStr) {
       try {
         const userData = JSON.parse(sessionStr);
-        setUser(userData);
-        loadUserData(userData.id);
+        if (userData && userData.id && userData.name) {
+             setUser(userData);
+             loadUserData(userData.id);
+        } else {
+             // Invalid session data
+             localStorage.removeItem('habit_architect_session');
+             setIsLoaded(true);
+        }
       } catch (e) {
         console.error("Invalid session", e);
+        localStorage.removeItem('habit_architect_session');
         setIsLoaded(true);
       }
     } else {
@@ -520,6 +527,9 @@ const App = () => {
                         </button>
                         <button onClick={() => setGoalModalOpen(true)} className="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-4 py-2.5 rounded-xl font-bold transition-all active:scale-95 text-sm">
                             <Target size={18} /> Add Goal
+                        </button>
+                        <button onClick={resetData} className="flex items-center gap-2 bg-white hover:bg-rose-50 text-slate-400 hover:text-rose-600 border border-slate-200 px-4 py-2.5 rounded-xl font-bold transition-all active:scale-95 text-sm" title="Reset Data">
+                            <RotateCcw size={18} />
                         </button>
                     </div>
                 </div>
