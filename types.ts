@@ -48,8 +48,18 @@ export interface DailyLog {
   aiAnalysis?: string;
 }
 
+export interface Badge {
+  id: string;
+  title: string;
+  description: string;
+  icon: string; // Lucide icon name mapping
+  color: string;
+  condition: string;
+}
+
 export interface AppState {
   habits: Habit[];
   goals: Goal[];
   logs: Record<string, DailyLog>; // date -> log
+  earnedBadges: string[]; // Array of Badge IDs
 }

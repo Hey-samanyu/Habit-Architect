@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Calendar, Layout, BarChart3, CheckCircle2, Target, Menu, X, Home, ListChecks, PieChart, Activity, RotateCcw, Bell, LogOut } from 'lucide-react';
+import { Plus, Calendar, Layout, BarChart3, CheckCircle2, Target, Menu, X, Home, ListChecks, PieChart, Activity, RotateCcw, Bell, LogOut, Medal, PartyPopper } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 
-import { Habit, Goal, Category, AppState, Frequency, DailyLog, User } from './types';
+import { Habit, Goal, Category, AppState, Frequency, DailyLog, User, Badge } from './types';
 import { AuthScreen } from './components/AuthScreen';
 import { HabitTracker } from './components/HabitTracker';
 import { GoalTracker } from './components/GoalTracker';
 import { AIOverview } from './components/AIOverview';
 import { Analytics } from './components/Analytics';
 import { KairoChat } from './components/KairoChat';
+import { Achievements, BADGES_LIST } from './components/Achievements';
 import { Modal, Card } from './components/UIComponents';
 
 // Helper to get today's date string YYYY-MM-DD
@@ -68,12 +69,15 @@ const generateFakeData = (): AppState => {
     };
   }
 
-  return { habits, goals, logs };
+  // Initial earned badges for fake data
+  const earnedBadges = ['first_step', 'streak_3', 'streak_7'];
+
+  return { habits, goals, logs, earnedBadges };
 };
 
 const App = () => {
   const [user, setUser] = useState<User | null>(null);
-  const [state, setState] = useState<AppState>({ habits: [], goals: [], logs: {} });
+  const [state, setState] = useState<AppState>({ habits: [], goals: [], logs: {}, earnedBadges: [] });
   const [isLoaded, setIsLoaded] = useState(false);
 
   // --- Authentication & Data Loading (Local Storage) ---
@@ -99,7 +103,10 @@ const App = () => {
     const savedData = localStorage.getItem(`habit_architect_data_${userId}`);
     if (savedData) {
         try {
-            setState(JSON.parse(savedData));
+            const parsedData = JSON.parse(savedData);
+            // Backwards compatibility: ensure earnedBadges exists
+            if (!parsedData.earnedBadges) parsedData.earnedBadges = [];
+            setState(parsedData);
         } catch (e) {
             console.error("Failed to parse user data");
         }
@@ -125,7 +132,7 @@ const App = () => {
   const handleSignOut = () => {
       localStorage.removeItem('habit_architect_session');
       setUser(null);
-      setState({ habits: [], goals: [], logs: {} });
+      setState({ habits: [], goals: [], logs: {}, earnedBadges: [] });
   };
 
 
@@ -135,6 +142,7 @@ const App = () => {
   const [currentHabitTab, setCurrentHabitTab] = useState<Frequency>(Frequency.DAILY);
   const [isSidebarOpen, setSidebarOpen] = useState(false); 
   const [activeSection, setActiveSection] = useState('dashboard');
+  const [newBadge, setNewBadge] = useState<Badge | null>(null); // For badge modal
   const mainRef = useRef<HTMLDivElement>(null);
 
   // Form State
@@ -149,6 +157,51 @@ const App = () => {
   const [newGoalFrequency, setNewGoalFrequency] = useState<Frequency>(Frequency.ONCE);
 
   const lastCheckedMinute = useRef<string>("");
+
+  // --- Achievement Engine ---
+  const checkAchievements = (newState: AppState) => {
+      const earned = new Set(newState.earnedBadges);
+      const newBadges: string[] = [];
+      const todayKey = getTodayKey();
+
+      // 1. First Step: Created a habit
+      if (newState.habits.length >= 1 && !earned.has('first_step')) newBadges.push('first_step');
+
+      // 2. Streaks
+      const maxStreak = Math.max(...newState.habits.map(h => h.streak), 0);
+      if (maxStreak >= 3 && !earned.has('streak_3')) newBadges.push('streak_3');
+      if (maxStreak >= 7 && !earned.has('streak_7')) newBadges.push('streak_7');
+      if (maxStreak >= 30 && !earned.has('streak_30')) newBadges.push('streak_30');
+
+      // 3. Architect: 5 Active Habits
+      if (newState.habits.length >= 5 && !earned.has('architect')) newBadges.push('architect');
+
+      // 4. Goal Getter: Completed a goal
+      const completedGoals = newState.goals.filter(g => g.current >= g.target).length;
+      if (completedGoals >= 1 && !earned.has('goal_getter')) newBadges.push('goal_getter');
+
+      // 5. Consistent: 50 Total Completions
+      const totalCompletions = Object.values(newState.logs).reduce((acc, log) => acc + log.completedHabitIds.length, 0);
+      if (totalCompletions >= 50 && !earned.has('consistent')) newBadges.push('consistent');
+
+      // 6. High Flyer: 100% Today
+      const todayLog = newState.logs[todayKey];
+      const todayCompleted = todayLog ? todayLog.completedHabitIds.length : 0;
+      const activeHabits = newState.habits.length;
+      if (activeHabits > 0 && todayCompleted === activeHabits && !earned.has('high_flyer')) newBadges.push('high_flyer');
+
+      if (newBadges.length > 0) {
+          const updatedEarnedBadges = [...newState.earnedBadges, ...newBadges];
+          
+          // Trigger modal for the first new badge found
+          const badgeDef = BADGES_LIST.find(b => b.id === newBadges[0]);
+          if (badgeDef) setNewBadge(badgeDef);
+
+          return { ...newState, earnedBadges: updatedEarnedBadges };
+      }
+
+      return newState;
+  };
 
   // Notifications
   useEffect(() => {
@@ -251,7 +304,12 @@ const App = () => {
       frequency: newHabitFrequency,
       reminderTime: newHabitReminder || undefined
     };
-    setState(prev => ({ ...prev, habits: [...prev.habits, newHabit] }));
+    
+    setState(prev => {
+        const nextState = { ...prev, habits: [...prev.habits, newHabit] };
+        return checkAchievements(nextState);
+    });
+
     setNewHabitTitle('');
     setNewHabitReminder('');
     setHabitModalOpen(false);
@@ -280,7 +338,7 @@ const App = () => {
         return h;
       });
 
-      return {
+      const nextState = {
         ...prev,
         habits: updatedHabits,
         logs: {
@@ -288,6 +346,8 @@ const App = () => {
           [todayKey]: { ...currentLog, completedHabitIds: newCompletedIds }
         }
       };
+
+      return checkAchievements(nextState);
     });
   };
 
@@ -314,15 +374,18 @@ const App = () => {
   };
 
   const updateGoalProgress = (id: string, delta: number) => {
-    setState(prev => ({
-      ...prev,
-      goals: prev.goals.map(g => {
-        if (g.id === id) {
-          return { ...g, current: Math.max(0, g.current + delta) };
-        }
-        return g;
-      })
-    }));
+    setState(prev => {
+      const nextState = {
+        ...prev,
+        goals: prev.goals.map(g => {
+          if (g.id === id) {
+            return { ...g, current: Math.max(0, g.current + delta) };
+          }
+          return g;
+        })
+      };
+      return checkAchievements(nextState);
+    });
   };
 
   const scrollToSection = (id: string) => {
@@ -370,6 +433,7 @@ const App = () => {
               { id: 'habits', icon: ListChecks, label: 'My Habits' },
               { id: 'goals', icon: Target, label: 'Goals' },
               { id: 'analytics', icon: PieChart, label: 'Analytics' },
+              { id: 'achievements', icon: Medal, label: 'Achievements' },
             ].map(item => (
               <button 
                 key={item.id}
@@ -515,6 +579,19 @@ const App = () => {
                          <section id="analytics" className="scroll-mt-20">
                             <Analytics habits={state.habits} goals={state.goals} logs={state.logs} />
                         </section>
+
+                        <section id="achievements" className="scroll-mt-20">
+                             <div className="flex items-center justify-between mb-6">
+                                <div>
+                                    <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                        <Medal className="text-amber-500" size={20} />
+                                        Achievements
+                                    </h3>
+                                    <p className="text-sm text-slate-500">Badges you've unlocked</p>
+                                </div>
+                            </div>
+                            <Achievements earnedBadgeIds={state.earnedBadges} />
+                        </section>
                     </div>
 
                     <div className="space-y-8">
@@ -555,6 +632,37 @@ const App = () => {
       </div>
 
       <KairoChat habits={state.habits} goals={state.goals} logs={state.logs} />
+
+      {/* Badge Unlock Modal */}
+      {newBadge && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-8 text-center relative overflow-hidden animate-in zoom-in duration-300">
+                <button 
+                    onClick={() => setNewBadge(null)}
+                    className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"
+                >
+                    <X size={24} />
+                </button>
+                
+                <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-indigo-50 to-transparent -z-10"></div>
+
+                <div className={`w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl animate-bounce ${newBadge.color} text-white`}>
+                    <Medal size={48} />
+                </div>
+
+                <h2 className="text-2xl font-extrabold text-slate-800 mb-2">Badge Unlocked!</h2>
+                <h3 className="text-xl font-bold text-indigo-600 mb-2">{newBadge.title}</h3>
+                <p className="text-slate-500 font-medium mb-6">{newBadge.description}</p>
+
+                <button 
+                    onClick={() => setNewBadge(null)}
+                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-indigo-200 transition-all active:scale-95"
+                >
+                    Awesome!
+                </button>
+            </div>
+        </div>
+      )}
 
       <Modal isOpen={isHabitModalOpen} onClose={() => setHabitModalOpen(false)} title="Create New Habit">
         <div className="space-y-4">
