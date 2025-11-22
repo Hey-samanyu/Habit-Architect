@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Calendar, Layout, BarChart3, CheckCircle2, Target, Menu, X, Home, ListChecks, PieChart, Activity, RotateCcw, Bell, LogOut, Medal, PartyPopper } from 'lucide-react';
 import { format, subDays } from 'date-fns';
+import { supabase } from './services/supabaseClient';
 
 import { Habit, Goal, Category, AppState, Frequency, DailyLog, User, Badge } from './types';
 import { AuthScreen } from './components/AuthScreen';
@@ -79,60 +80,96 @@ const App = () => {
   const [user, setUser] = useState<User | null>(null);
   const [state, setState] = useState<AppState>({ habits: [], goals: [], logs: {}, earnedBadges: [] });
   const [isLoaded, setIsLoaded] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved');
 
-  // --- Authentication & Data Loading (Local Storage) ---
+  // --- Authentication & Data Loading (Supabase) ---
   
   useEffect(() => {
-    // Check for active session in local storage
-    const sessionUser = localStorage.getItem('habit_architect_session');
-    if (sessionUser) {
-        try {
-            const parsedUser = JSON.parse(sessionUser);
-            setUser(parsedUser);
-            loadUserData(parsedUser.id);
-        } catch (e) {
-            console.error("Invalid session");
-            setIsLoaded(true);
-        }
-    } else {
+    const client = supabase;
+    if (!client) {
         setIsLoaded(true);
+        return;
     }
+
+    const { data: { subscription } } = client.auth.onAuthStateChange(
+      async (_event, session) => {
+        if (session?.user) {
+          const userData: User = {
+            id: session.user.id,
+            email: session.user.email!,
+            name: session.user.user_metadata.full_name || session.user.email!,
+          };
+          setUser(userData);
+          await loadUserData(session.user.id);
+        } else {
+          setUser(null);
+          setState({ habits: [], goals: [], logs: {}, earnedBadges: [] });
+          setIsLoaded(true);
+        }
+      }
+    );
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const loadUserData = (userId: string) => {
-    const savedData = localStorage.getItem(`habit_architect_data_${userId}`);
-    if (savedData) {
-        try {
-            const parsedData = JSON.parse(savedData);
-            // Backwards compatibility: ensure earnedBadges exists
-            if (!parsedData.earnedBadges) parsedData.earnedBadges = [];
-            setState(parsedData);
-        } catch (e) {
-            console.error("Failed to parse user data");
+  const loadUserData = async (userId: string) => {
+    const client = supabase;
+    if (!client) return;
+
+    try {
+        const { data, error } = await client
+            .from('user_data')
+            .select('content')
+            .eq('user_id', userId)
+            .single();
+
+        if (data && data.content) {
+             // Merge with defaults to ensure new fields exist
+             const loadedState = data.content as AppState;
+             if (!loadedState.earnedBadges) loadedState.earnedBadges = [];
+             setState(loadedState);
+        } else {
+            // First time user, insert empty or default state
+             console.log("No data found, starting fresh.");
         }
-    } else {
-        // New user data logic - currently empty
+    } catch (err) {
+        console.error("Error loading data:", err);
+    } finally {
+        setIsLoaded(true);
     }
-    setIsLoaded(true);
   };
 
-  // Save Data to Local Storage
+  // Debounced Save Data to Supabase
   useEffect(() => {
-    if (isLoaded && user) {
-        localStorage.setItem(`habit_architect_data_${user.id}`, JSON.stringify(state));
-    }
+    const client = supabase;
+    if (!isLoaded || !user || !client) return;
+
+    const saveData = async () => {
+      setSaveStatus('saving');
+      try {
+        const { error } = await client
+          .from('user_data')
+          .upsert({ 
+            user_id: user.id, 
+            content: state,
+            updated_at: new Date().toISOString()
+          });
+        
+        if (error) throw error;
+        setSaveStatus('saved');
+      } catch (err) {
+        console.error("Error saving data:", err);
+        setSaveStatus('error');
+      }
+    };
+
+    const timeoutId = setTimeout(saveData, 1000);
+    return () => clearTimeout(timeoutId);
   }, [state, isLoaded, user]);
 
-  const handleAuthSuccess = (loggedInUser: User) => {
-      localStorage.setItem('habit_architect_session', JSON.stringify(loggedInUser));
-      setUser(loggedInUser);
-      loadUserData(loggedInUser.id);
-  };
-
-  const handleSignOut = () => {
-      localStorage.removeItem('habit_architect_session');
-      setUser(null);
-      setState({ habits: [], goals: [], logs: {}, earnedBadges: [] });
+  const handleSignOut = async () => {
+      const client = supabase;
+      if (client) await client.auth.signOut();
   };
 
 
@@ -264,11 +301,11 @@ const App = () => {
     return () => observer.disconnect();
   }, [isLoaded]); 
 
-  if (!isLoaded) return <div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div></div>;
+  if (!isLoaded) return <div className="min-h-screen flex items-center justify-center bg-slate-50"><div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div></div>;
 
   // --- Auth Guard ---
   if (!user) {
-      return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
+      return <AuthScreen onAuthSuccess={() => {}} />;
   }
 
   const todayKey = getTodayKey();
@@ -451,6 +488,11 @@ const App = () => {
           </nav>
 
           <div className="mt-auto pt-6 border-t border-slate-800 space-y-2">
+              <div className="px-4 pb-4">
+                  <span className={`text-xs font-bold px-2 py-1 rounded-full border ${saveStatus === 'error' ? 'border-rose-800 text-rose-400 bg-rose-950/30' : 'border-emerald-800 text-emerald-400 bg-emerald-950/30'}`}>
+                    {saveStatus === 'saving' ? 'Syncing...' : saveStatus === 'error' ? 'Sync Error' : 'Cloud Synced'}
+                  </span>
+              </div>
               <button onClick={handleSignOut} className="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-rose-400 transition-colors text-sm font-medium w-full">
                   <LogOut size={18} />
                   Sign Out
@@ -479,10 +521,9 @@ const App = () => {
             </div>
             <div className="flex items-center gap-4">
                 <div className="flex items-center gap-3 text-sm font-medium text-slate-600">
-                    {/* Display Name preferentially, fallback to Email */}
-                    <span className="hidden md:inline">{user.name || user.email}</span>
+                    <span className="hidden md:inline">{user.name}</span>
                     <div className="w-8 h-8 bg-indigo-100 rounded-full border border-indigo-200 flex items-center justify-center text-indigo-700 font-bold text-xs uppercase">
-                        {user.name?.[0] || user.email?.[0] || 'U'}
+                        {user.name[0]}
                     </div>
                 </div>
             </div>
@@ -495,7 +536,7 @@ const App = () => {
                 {/* Hero */}
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                     <div>
-                        <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">{getGreeting()}, {user.name ? user.name.split(' ')[0] : 'Architect'}</h2>
+                        <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">{getGreeting()}, {user.name.split(' ')[0]}</h2>
                         <p className="text-slate-500 mt-1">Here's what's happening with your goals today.</p>
                     </div>
                     <div className="flex gap-3">

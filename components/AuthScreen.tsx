@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
 import { Lock, Mail, ArrowRight, Loader2, Layout, AlertCircle, User as UserIcon } from 'lucide-react';
-import { User } from '../types';
+import { supabase } from '../services/supabaseClient';
 
 interface AuthScreenProps {
-  onAuthSuccess: (user: User) => void;
+  onAuthSuccess: (user: any) => void;
 }
 
 export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
   const [isLogin, setIsLogin] = useState(true);
-  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -19,39 +19,37 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
     setLoading(true);
     setError(null);
 
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 800));
+    if (!supabase) {
+      setError("Supabase is not configured. Please add API keys to Vercel.");
+      setLoading(false);
+      return;
+    }
 
     try {
-      const usersStr = localStorage.getItem('habit_architect_users');
-      const users: User[] = usersStr ? JSON.parse(usersStr) : [];
-
       if (isLogin) {
-        const user = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password);
-        if (user) {
-          onAuthSuccess(user);
-        } else {
-          throw new Error("Invalid email or password");
-        }
-      } else {
-        if (users.some(u => u.email.toLowerCase() === email.toLowerCase())) {
-          throw new Error("User with this email already exists");
-        }
-        
-        if (!name.trim()) {
-           throw new Error("Please enter your name");
-        }
-
-        const newUser: User = {
-          id: crypto.randomUUID(),
-          name: name.trim(),
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
-          password
-        };
+          password,
+        });
+        if (error) throw error;
+        // Auth state change listener in App.tsx will handle the rest
+      } else {
+        if (!name.trim()) throw new Error("Please enter your name.");
         
-        const updatedUsers = [...users, newUser];
-        localStorage.setItem('habit_architect_users', JSON.stringify(updatedUsers));
-        onAuthSuccess(newUser);
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              full_name: name,
+            },
+          },
+        });
+        if (error) throw error;
+        if (data.user) {
+           // Login immediately after signup
+           await supabase.auth.signInWithPassword({ email, password });
+        }
       }
     } catch (err: any) {
       setError(err.message);
@@ -80,7 +78,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
 
         <form onSubmit={handleAuth} className="space-y-5">
           
-          {/* Name Field - Only show for Sign Up */}
           {!isLogin && (
             <div className="animate-in slide-in-from-top-2 fade-in duration-300">
                 <label className="block text-sm font-bold text-slate-700 mb-1.5 ml-1">Full Name</label>

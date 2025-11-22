@@ -1,3 +1,12 @@
-// Service removed. Using Local Storage for persistence.
-export const isSupabaseConfigured = () => false;
-export const supabase = null;
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+
+export const isSupabaseConfigured = () => {
+  return !!supabaseUrl && !!supabaseAnonKey;
+};
+
+export const supabase = isSupabaseConfigured()
+  ? createClient(supabaseUrl!, supabaseAnonKey!)
+  : null;
