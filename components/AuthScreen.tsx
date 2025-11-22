@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Lock, Mail, ArrowRight, Loader2, Layout, AlertCircle, User as UserIcon, KeyRound, CheckCircle2, RefreshCw } from 'lucide-react';
+import { Lock, Mail, ArrowRight, Loader2, Layout, AlertCircle, User as UserIcon, KeyRound, CheckCircle2, RefreshCw, Inbox } from 'lucide-react';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, sendPasswordResetEmail, sendEmailVerification, signOut } from 'firebase/auth';
 import { auth, isFirebaseConfigured } from '../services/firebase';
 import { User } from '../types';
@@ -118,25 +118,31 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
   if (isVerificationSent) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4 font-sans relative">
-            <div className="bg-white w-full max-w-md p-8 rounded-3xl shadow-xl border border-slate-100 text-center animate-in zoom-in duration-300">
-                <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <Mail size={32} />
+            <div className="bg-white w-full max-w-md p-10 rounded-3xl shadow-2xl border border-slate-100 text-center animate-in zoom-in duration-300 relative overflow-hidden">
+                {/* Background Decoration */}
+                <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-indigo-50 to-transparent -z-10"></div>
+                
+                <div className="w-20 h-20 bg-white border-4 border-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-indigo-100">
+                    <Inbox size={36} />
                 </div>
-                <h2 className="text-2xl font-extrabold text-slate-900 mb-2">Verify your Email</h2>
-                <p className="text-slate-600 mb-6">
-                    We've sent a verification link to <strong>{email}</strong>.
-                    <br/>Please check your inbox (and spam) and click the link to activate your account.
+                
+                <h2 className="text-3xl font-extrabold text-slate-900 mb-3">Check your Inbox</h2>
+                <div className="w-16 h-1 bg-indigo-500 mx-auto rounded-full mb-6"></div>
+                
+                <p className="text-slate-600 mb-6 text-lg leading-relaxed">
+                    We've sent a verification link to <br/><span className="font-bold text-indigo-700">{email}</span>.
                 </p>
                 
-                <div className="p-4 bg-slate-50 rounded-xl text-sm text-slate-500 mb-6 border border-slate-200">
-                    After verifying, come back here and sign in.
+                <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl text-sm text-amber-800 mb-8 text-left flex gap-3">
+                    <AlertCircle size={20} className="shrink-0 text-amber-500" />
+                    <p><strong>Tip:</strong> If you don't see it, check your <strong>Spam</strong> or <strong>Junk</strong> folder.</p>
                 </div>
 
                 <button 
                     onClick={handleBackToLogin}
-                    className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 transition-all"
+                    className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold shadow-lg shadow-slate-200 transition-all active:scale-[0.98]"
                 >
-                    Back to Sign In
+                    I've Verified, Let me In
                 </button>
             </div>
         </div>
