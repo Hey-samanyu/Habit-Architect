@@ -87,6 +87,8 @@ const App = () => {
   useEffect(() => {
     const client = supabase;
     if (!client) {
+        // If Supabase is not configured, we could fall back to local simulation
+        // but for this request we assume user wants cloud.
         setIsLoaded(true);
         return;
     }
@@ -100,7 +102,7 @@ const App = () => {
             name: session.user.user_metadata.full_name || session.user.email!,
           };
           setUser(userData);
-          await loadUserData(session.user.id);
+          await loadUserData(session.user.id, client);
         } else {
           setUser(null);
           setState({ habits: [], goals: [], logs: {}, earnedBadges: [] });
@@ -112,10 +114,7 @@ const App = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const loadUserData = async (userId: string) => {
-    const client = supabase;
-    if (!client) return;
-
+  const loadUserData = async (userId: string, client: any) => {
     try {
         const { data, error } = await client
             .from('user_data')

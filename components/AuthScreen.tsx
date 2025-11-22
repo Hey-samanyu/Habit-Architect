@@ -47,8 +47,18 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
         });
         if (error) throw error;
         if (data.user) {
-           // Login immediately after signup
-           await supabase.auth.signInWithPassword({ email, password });
+           // Login immediately after signup if auto-confirm is enabled, or user needs to check email
+           // We attempt sign in, usually Supabase requires email confirmation unless disabled
+           const signIn = await supabase.auth.signInWithPassword({ email, password });
+           if (signIn.error) {
+             // If sign in fails, it might be because email needs confirmation
+             if (!signIn.error.message.includes("Invalid login credentials")) {
+                 setError("Account created! Please check your email to confirm before logging in.");
+                 setIsLogin(true);
+                 setLoading(false);
+                 return;
+             }
+           }
         }
       }
     } catch (err: any) {
