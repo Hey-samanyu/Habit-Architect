@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Lock, Mail, ArrowRight, Loader2, Layout, AlertCircle, User as UserIcon } from 'lucide-react';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { Lock, Mail, ArrowRight, Loader2, Layout, AlertCircle, User as UserIcon, KeyRound } from 'lucide-react';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, sendPasswordResetEmail } from 'firebase/auth';
 import { auth, isFirebaseConfigured } from '../services/firebase';
 import { User } from '../types';
 
@@ -10,16 +10,19 @@ interface AuthScreenProps {
 
 export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
   const [isLogin, setIsLogin] = useState(true);
+  const [isResetMode, setIsResetMode] = useState(false); // For "Forgot Password"
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setSuccessMessage(null);
 
     if (!isFirebaseConfigured() || !auth) {
         setError("Firebase connection missing. Please check API keys.");
@@ -28,7 +31,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
     }
 
     try {
-      if (isLogin) {
+      if (isResetMode) {
+        await sendPasswordResetEmail(auth, email);
+        setSuccessMessage("Password reset email sent! Check your inbox.");
+        setIsResetMode(false);
+      } else if (isLogin) {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const fbUser = userCredential.user;
         onAuthSuccess({
@@ -59,6 +66,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
       if (err.code === 'auth/invalid-credential') msg = "Invalid email or password.";
       if (err.code === 'auth/email-already-in-use') msg = "Email already registered.";
       if (err.code === 'auth/weak-password') msg = "Password should be at least 6 characters.";
+      if (err.code === 'auth/user-not-found') msg = "No account found with this email.";
       setError(msg);
     } finally {
       setLoading(false);
@@ -104,9 +112,16 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
           </div>
         )}
 
+        {successMessage && (
+          <div className="mb-6 p-4 bg-emerald-50 border border-emerald-100 rounded-xl flex items-start gap-3 animate-in slide-in-from-top-2">
+            <KeyRound className="text-emerald-500 shrink-0 mt-0.5" size={18} />
+            <p className="text-sm text-emerald-600 font-medium">{successMessage}</p>
+          </div>
+        )}
+
         <form onSubmit={handleAuth} className="space-y-5">
           
-          {!isLogin && (
+          {!isLogin && !isResetMode && (
             <div className="animate-in slide-in-from-top-2 fade-in duration-300">
                 <label className="block text-sm font-bold text-slate-700 mb-1.5 ml-1">Full Name</label>
                 <div className="relative">
@@ -142,23 +157,36 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-bold text-slate-700 mb-1.5 ml-1">Password</label>
-            <div className="relative">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-                <Lock size={20} />
-              </div>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50/50 outline-none transition-all font-medium text-slate-800 placeholder:text-slate-400"
-                placeholder="••••••••"
-                minLength={6}
-              />
+          {!isResetMode && (
+            <div>
+                <div className="flex justify-between items-center mb-1.5 ml-1">
+                    <label className="block text-sm font-bold text-slate-700">Password</label>
+                    {isLogin && (
+                        <button 
+                            type="button" 
+                            onClick={() => setIsResetMode(true)}
+                            className="text-xs font-bold text-indigo-600 hover:underline"
+                        >
+                            Forgot?
+                        </button>
+                    )}
+                </div>
+                <div className="relative">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                    <Lock size={20} />
+                </div>
+                <input
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50/50 outline-none transition-all font-medium text-slate-800 placeholder:text-slate-400"
+                    placeholder="••••••••"
+                    minLength={6}
+                />
+                </div>
             </div>
-          </div>
+          )}
 
           <button
             type="submit"
@@ -169,7 +197,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
               <Loader2 className="animate-spin" size={20} />
             ) : (
               <>
-                {isLogin ? 'Sign In' : 'Create Account'}
+                {isResetMode ? 'Send Reset Link' : (isLogin ? 'Sign In' : 'Create Account')}
                 <ArrowRight size={20} />
               </>
             )}
@@ -177,15 +205,24 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
         </form>
 
         <div className="mt-8 text-center">
-          <p className="text-slate-500 text-sm">
-            {isLogin ? "Don't have an account?" : "Already have an account?"}
-            <button
-              onClick={() => setIsLogin(!isLogin)}
-              className="ml-1.5 text-indigo-600 font-bold hover:underline focus:outline-none"
-            >
-              {isLogin ? "Sign Up" : "Sign In"}
-            </button>
-          </p>
+            {isResetMode ? (
+                <button
+                    onClick={() => setIsResetMode(false)}
+                    className="text-slate-500 text-sm font-medium hover:text-slate-700 transition-colors"
+                >
+                    Back to Sign In
+                </button>
+            ) : (
+                <p className="text-slate-500 text-sm">
+                    {isLogin ? "Don't have an account?" : "Already have an account?"}
+                    <button
+                    onClick={() => setIsLogin(!isLogin)}
+                    className="ml-1.5 text-indigo-600 font-bold hover:underline focus:outline-none"
+                    >
+                    {isLogin ? "Sign Up" : "Sign In"}
+                    </button>
+                </p>
+            )}
         </div>
       </div>
     </div>
