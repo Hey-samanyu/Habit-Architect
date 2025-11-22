@@ -27,12 +27,15 @@ const App = () => {
   // --- Authentication & Data Loading (Firebase) ---
   
   useEffect(() => {
-    if (!isFirebaseConfigured() || !auth) {
+    // Create local reference to satisfy TypeScript that auth doesn't change between check and usage
+    const firebaseAuth = auth;
+
+    if (!isFirebaseConfigured() || !firebaseAuth) {
         setIsLoaded(true);
         return;
     }
 
-    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
+    const unsubscribe = onAuthStateChanged(firebaseAuth, async (fbUser) => {
         // STRICT VERIFICATION CHECK
         if (fbUser && fbUser.emailVerified) {
             const userData: User = {
@@ -45,7 +48,7 @@ const App = () => {
         } else {
             // If user exists but not verified, or no user
             if (fbUser && !fbUser.emailVerified) {
-                await signOut(auth);
+                await signOut(firebaseAuth);
             }
             setUser(null);
             setState({ habits: [], goals: [], logs: {}, earnedBadges: [] });
