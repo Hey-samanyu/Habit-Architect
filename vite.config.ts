@@ -17,16 +17,12 @@ export default defineConfig(({ mode }) => {
 
   // Load variables
   const apiKey = cleanKey(process.env.API_KEY || env.API_KEY);
-  const supabaseUrl = cleanKey(process.env.SUPABASE_URL || env.SUPABASE_URL);
-  const supabaseKey = cleanKey(process.env.SUPABASE_ANON_KEY || env.SUPABASE_ANON_KEY);
 
   return {
     plugins: [react()],
     define: {
-      // Strictly define these as strings to ensure they are replaced at build time
+      // Strictly define API_KEY
       'process.env.API_KEY': JSON.stringify(apiKey),
-      'process.env.SUPABASE_URL': JSON.stringify(supabaseUrl),
-      'process.env.SUPABASE_ANON_KEY': JSON.stringify(supabaseKey),
     },
   };
 });

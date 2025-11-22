@@ -1,19 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Calendar, Layout, BarChart3, CheckCircle2, Target, Menu, X, Home, ListChecks, PieChart, Activity, RotateCcw, Bell, LogOut, Loader2 } from 'lucide-react';
+import { Plus, Calendar, Layout, BarChart3, CheckCircle2, Target, Menu, X, Home, ListChecks, PieChart, Activity, RotateCcw, Bell } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 
-import { Habit, Goal, Category, AppState, Frequency, DailyLog, User } from './types';
+import { Habit, Goal, Category, AppState, Frequency, DailyLog } from './types';
 import { HabitTracker } from './components/HabitTracker';
 import { GoalTracker } from './components/GoalTracker';
 import { AIOverview } from './components/AIOverview';
 import { Analytics } from './components/Analytics';
 import { KairoChat } from './components/KairoChat';
 import { Modal, Card } from './components/UIComponents';
-import { AuthScreen } from './components/AuthScreen';
-import { supabase } from './services/supabaseClient';
 
 // Helper to get today's date string YYYY-MM-DD
 const getTodayKey = () => format(new Date(), 'yyyy-MM-dd');
+const STORAGE_KEY = 'habit-architect-data';
 
 const generateFakeData = (): AppState => {
   const today = new Date();
@@ -73,105 +72,31 @@ const generateFakeData = (): AppState => {
 };
 
 const App = () => {
-  const [user, setUser] = useState<User | null>(null);
   const [state, setState] = useState<AppState>({ habits: [], goals: [], logs: {} });
-  const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
 
-  // Auth Listener
+  // Load Data from Local Storage
   useEffect(() => {
-    if (!supabase) {
-      setLoading(false);
-      return;
-    }
-
-    // Check current session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setUser({ id: session.user.id, email: session.user.email });
-        loadData(session.user.id);
-      } else {
-        setLoading(false);
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        setState(JSON.parse(saved));
+      } catch (e) {
+        console.error("Failed to parse local storage", e);
       }
-    });
-
-    // Listen for changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        setUser({ id: session.user.id, email: session.user.email });
-        loadData(session.user.id);
-      } else {
-        setUser(null);
+    } else {
+        // Initialize with some empty state or user can hit reset to get fake data
         setState({ habits: [], goals: [], logs: {} });
-        setLoading(false);
-      }
-    });
-
-    return () => subscription.unsubscribe();
+    }
+    setIsLoaded(true);
   }, []);
 
-  // Load Data from Supabase
-  const loadData = async (userId: string) => {
-    if (!supabase) return;
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('user_data')
-        .select('content')
-        .eq('user_id', userId)
-        .single();
-
-      if (error && error.code !== 'PGRST116') { // PGRST116 is "Row not found" which is fine for new users
-        console.error('Error loading data:', error);
-      }
-
-      if (data && data.content) {
-        setState(data.content);
-      } else {
-        // New user, start fresh
-        setState({ habits: [], goals: [], logs: {} });
-      }
-    } catch (e) {
-      console.error('Load exception:', e);
-    } finally {
-      setLoading(false);
+  // Save Data to Local Storage
+  useEffect(() => {
+    if (isLoaded) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     }
-  };
-
-  // Save Data to Supabase (Debounced or Triggered)
-  const saveData = async (newState: AppState) => {
-    if (!supabase || !user) return;
-    setSyncing(true);
-    
-    try {
-      const { error } = await supabase
-        .from('user_data')
-        .upsert({ 
-          user_id: user.id, 
-          content: newState,
-          updated_at: new Date().toISOString()
-        });
-
-      if (error) throw error;
-    } catch (e) {
-      console.error('Error saving data:', e);
-    } finally {
-      setSyncing(false);
-    }
-  };
-
-  // Wrap setState to also save to DB
-  const updateState = (updater: (prev: AppState) => AppState) => {
-    setState(prev => {
-      const newState = updater(prev);
-      saveData(newState); // Trigger save side-effect
-      return newState;
-    });
-  };
-
-  const handleLogout = async () => {
-    if (supabase) await supabase.auth.signOut();
-  };
+  }, [state, isLoaded]);
 
 
   // --- UI State ---
@@ -254,23 +179,9 @@ const App = () => {
     const sections = document.querySelectorAll('section[id]');
     sections.forEach((section) => observer.observe(section));
     return () => observer.disconnect();
-  }, [loading]); // Re-run when loading finishes and content renders
+  }, [isLoaded]); 
 
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 size={40} className="text-indigo-600 animate-spin" />
-          <p className="text-slate-500 font-medium animate-pulse">Loading Habit Architect...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <AuthScreen />;
-  }
+  if (!isLoaded) return null;
 
   const todayKey = getTodayKey();
   const todayLog = state.logs[todayKey] || { date: todayKey, completedHabitIds: [], goalProgress: {} };
@@ -285,7 +196,7 @@ const App = () => {
   // --- Actions ---
   const resetData = () => {
       if(confirm("This will REPLACE your current data with sample data. Are you sure?")) {
-          updateState(() => generateFakeData());
+          setState(generateFakeData());
       }
   }
 
@@ -305,18 +216,18 @@ const App = () => {
       frequency: newHabitFrequency,
       reminderTime: newHabitReminder || undefined
     };
-    updateState(prev => ({ ...prev, habits: [...prev.habits, newHabit] }));
+    setState(prev => ({ ...prev, habits: [...prev.habits, newHabit] }));
     setNewHabitTitle('');
     setNewHabitReminder('');
     setHabitModalOpen(false);
   };
 
   const deleteHabit = (id: string) => {
-    updateState(prev => ({ ...prev, habits: prev.habits.filter(h => h.id !== id) }));
+    setState(prev => ({ ...prev, habits: prev.habits.filter(h => h.id !== id) }));
   };
 
   const toggleHabit = (id: string) => {
-    updateState(prev => {
+    setState(prev => {
       const currentLog = prev.logs[todayKey] || { date: todayKey, completedHabitIds: [], goalProgress: {} };
       const isCompleted = currentLog.completedHabitIds.includes(id);
       
@@ -355,7 +266,7 @@ const App = () => {
       unit: newGoalUnit,
       frequency: newGoalFrequency
     };
-    updateState(prev => ({ ...prev, goals: [...prev.goals, newGoal] }));
+    setState(prev => ({ ...prev, goals: [...prev.goals, newGoal] }));
     setNewGoalTitle('');
     setNewGoalTarget(10);
     setNewGoalUnit('times');
@@ -364,11 +275,11 @@ const App = () => {
   };
 
   const deleteGoal = (id: string) => {
-    updateState(prev => ({ ...prev, goals: prev.goals.filter(g => g.id !== id) }));
+    setState(prev => ({ ...prev, goals: prev.goals.filter(g => g.id !== id) }));
   };
 
   const updateGoalProgress = (id: string, delta: number) => {
-    updateState(prev => ({
+    setState(prev => ({
       ...prev,
       goals: prev.goals.map(g => {
         if (g.id === id) {
@@ -445,10 +356,6 @@ const App = () => {
                   <RotateCcw size={18} />
                   Reset Demo Data
               </button>
-              <button onClick={handleLogout} className="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-rose-400 transition-colors text-sm font-medium w-full">
-                  <LogOut size={18} />
-                  Sign Out
-              </button>
           </div>
         </div>
       </aside>
@@ -470,15 +377,10 @@ const App = () => {
                     <Calendar size={14} />
                     <span>{format(new Date(), 'EEEE, MMM do')}</span>
                 </div>
-                {syncing && (
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded">
-                    <Loader2 size={12} className="animate-spin" /> Saving...
-                  </div>
-                )}
             </div>
             <div className="flex items-center gap-4">
                 <div className="w-8 h-8 bg-indigo-100 rounded-full border border-indigo-200 flex items-center justify-center text-indigo-700 font-bold text-xs uppercase">
-                    {user.email ? user.email.slice(0, 2) : 'HA'}
+                    G
                 </div>
             </div>
         </header>

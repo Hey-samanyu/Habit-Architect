@@ -13,12 +13,6 @@ export enum Frequency {
   ONCE = 'Once'
 }
 
-export interface User {
-  id: string;
-  email?: string;
-  name?: string; // Optional now, as magic link only gives email initially
-}
-
 export interface Habit {
   id: string;
   title: string;
