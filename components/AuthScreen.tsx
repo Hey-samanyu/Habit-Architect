@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Lock, Mail, ArrowRight, Loader2, Layout, AlertCircle, User as UserIcon, Trash2 } from 'lucide-react';
+import { Lock, Mail, ArrowRight, Loader2, Layout, AlertCircle, User as UserIcon } from 'lucide-react';
+import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
 import { User } from '../types';
 
 interface AuthScreenProps {
@@ -19,78 +20,80 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
     setLoading(true);
     setError(null);
 
-    // Simulate network delay for better UX
-    setTimeout(() => {
-      try {
-        const usersStr = localStorage.getItem('habit_architect_users');
-        let users: any[] = [];
-        
-        // ROBUST DATA LOADING
-        if (usersStr) {
-            try {
-                const parsed = JSON.parse(usersStr);
-                if (Array.isArray(parsed)) {
-                    users = parsed;
-                } else {
-                    console.warn("User storage corrupted (not an array). Resetting user list.");
-                    // Don't throw, just start with empty array
-                    users = []; 
-                }
-            } catch (e) {
-                console.warn("User storage corrupted (invalid JSON). Resetting user list.");
-                users = [];
-            }
-        }
-
-        if (isLogin) {
-          // LOGIN LOGIC
-          // Safe check using optional chaining just in case
-          const foundUser = users?.find((u: any) => u && u.email === email && u.password === password);
-          
-          if (foundUser) {
-            const userData: User = { id: foundUser.id, name: foundUser.name, email: foundUser.email };
-            localStorage.setItem('habit_architect_session', JSON.stringify(userData));
-            onAuthSuccess(userData);
-          } else {
-            throw new Error("Invalid email or password.");
-          }
-        } else {
-          // SIGNUP LOGIC
-          if (!name.trim()) throw new Error("Please enter your name.");
-          
-          // Safe check for duplicates
-          const exists = users?.find((u: any) => u && u.email === email);
-          if (exists) throw new Error("User already exists with this email.");
-
-          const newUser = {
-            id: crypto.randomUUID(),
-            name,
-            email,
-            password // Note: In a real production app, passwords should be hashed!
-          };
-
-          const updatedUsers = [...users, newUser];
-          localStorage.setItem('habit_architect_users', JSON.stringify(updatedUsers));
-          
-          const userData: User = { id: newUser.id, name: newUser.name, email: newUser.email };
-          localStorage.setItem('habit_architect_session', JSON.stringify(userData));
-          onAuthSuccess(userData);
-        }
-      } catch (err: any) {
-        console.error("Auth Error:", err);
-        setError(err.message || "An unexpected error occurred.");
-      } finally {
+    if (!isSupabaseConfigured() || !supabase) {
+        setError("Database connection missing. Please add SUPABASE_URL and SUPABASE_ANON_KEY to Vercel settings.");
         setLoading(false);
+        return;
+    }
+
+    try {
+      if (isLogin) {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (error) throw error;
+        if (data.user) {
+           onAuthSuccess({
+               id: data.user.id,
+               email: data.user.email || '',
+               name: data.user.user_metadata.full_name || data.user.email?.split('@')[0] || 'Architect'
+           });
+        }
+      } else {
+        if (!name.trim()) throw new Error("Please enter your name");
+        
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              full_name: name,
+            },
+          },
+        });
+
+        if (error) throw error;
+        
+        // Supabase might return a user even if email confirmation is required
+        // But for immediate access in this app flow:
+        if (data.user) {
+             onAuthSuccess({
+               id: data.user.id,
+               email: data.user.email || '',
+               name: name
+           });
+        } else {
+            setError("Check your email for a confirmation link!");
+        }
       }
-    }, 800);
+    } catch (err: any) {
+      console.error("Auth Error:", err);
+      setError(err.message || "An unexpected error occurred.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleFactoryReset = () => {
-      if (confirm("⚠️ FACTORY RESET\n\nThis will delete ALL accounts and data on this device.\nThis cannot be undone.\n\nAre you sure?")) {
-          localStorage.clear();
-          window.location.reload();
-      }
-  };
+  if (!isSupabaseConfigured()) {
+      return (
+          <div className="min-h-screen flex items-center justify-center bg-rose-50 p-4">
+              <div className="bg-white p-8 rounded-2xl shadow-xl text-center max-w-md">
+                  <AlertCircle className="mx-auto text-rose-500 mb-4" size={48} />
+                  <h2 className="text-xl font-bold text-slate-800 mb-2">Configuration Error</h2>
+                  <p className="text-slate-600 mb-4">
+                      The app cannot connect to the database. API keys are missing.
+                  </p>
+                  <div className="text-left bg-slate-100 p-4 rounded-lg text-xs font-mono text-slate-700 overflow-x-auto">
+                      SUPABASE_URL<br/>
+                      SUPABASE_ANON_KEY
+                  </div>
+                  <p className="text-slate-500 text-xs mt-4">Add these to Vercel Environment Variables and Redeploy.</p>
+              </div>
+          </div>
+      );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4 font-sans relative">
@@ -194,17 +197,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
             </button>
           </p>
         </div>
-      </div>
-      
-      {/* Emergency Reset Button */}
-      <div className="absolute bottom-4 right-4">
-          <button 
-            onClick={handleFactoryReset}
-            className="text-slate-300 hover:text-rose-500 transition-colors text-xs flex items-center gap-1"
-            title="Clear all data and reset"
-          >
-              <Trash2 size={12} /> Reset App Data
-          </button>
       </div>
     </div>
   );

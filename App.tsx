@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Calendar, Layout, BarChart3, CheckCircle2, Target, Menu, X, Home, ListChecks, PieChart, Activity, RotateCcw, Bell, LogOut, Medal, PartyPopper } from 'lucide-react';
-import { format, subDays } from 'date-fns';
+import { Plus, Calendar, Layout, BarChart3, CheckCircle2, Target, Menu, X, Home, ListChecks, PieChart, Activity, RotateCcw, Bell, LogOut, Medal } from 'lucide-react';
+import { format } from 'date-fns';
+import { supabase, isSupabaseConfigured } from './services/supabaseClient';
 
 import { Habit, Goal, Category, AppState, Frequency, DailyLog, User, Badge } from './types';
 import { AuthScreen } from './components/AuthScreen';
@@ -15,106 +16,78 @@ import { Modal, Card } from './components/UIComponents';
 // Helper to get today's date string YYYY-MM-DD
 const getTodayKey = () => format(new Date(), 'yyyy-MM-dd');
 
-const generateFakeData = (): AppState => {
-  const today = new Date();
-  
-  const habits: Habit[] = [
-    { 
-      id: 'h1', 
-      title: 'Morning Meditation', 
-      category: Category.MINDFULNESS, 
-      createdAt: subDays(today, 30).toISOString(), 
-      streak: 24,
-      frequency: Frequency.DAILY,
-      reminderTime: "07:00"
-    },
-    { 
-      id: 'h2', 
-      title: 'Deep Work (4h)', 
-      category: Category.WORK, 
-      createdAt: subDays(today, 14).toISOString(), 
-      streak: 8,
-      frequency: Frequency.DAILY
-    },
-    { 
-      id: 'h3', 
-      title: 'No Sugar', 
-      category: Category.HEALTH, 
-      createdAt: subDays(today, 15).toISOString(), 
-      streak: 12,
-      frequency: Frequency.DAILY
-    }
-  ];
-
-  const goals: Goal[] = [
-    { 
-      id: 'g1', 
-      title: 'Run 50km', 
-      current: 35, 
-      target: 50, 
-      unit: 'km', 
-      frequency: Frequency.MONTHLY 
-    }
-  ];
-
-  const logs: Record<string, DailyLog> = {};
-  
-  for (let i = 0; i < 30; i++) {
-    const date = subDays(today, i);
-    const dateKey = format(date, 'yyyy-MM-dd');
-    logs[dateKey] = {
-      date: dateKey,
-      completedHabitIds: i % 2 === 0 ? ['h1', 'h2'] : ['h1'],
-      goalProgress: {}
-    };
-  }
-
-  // Initial earned badges for fake data
-  const earnedBadges = ['first_step', 'streak_3', 'streak_7'];
-
-  return { habits, goals, logs, earnedBadges };
-};
-
 const App = () => {
   const [user, setUser] = useState<User | null>(null);
   const [state, setState] = useState<AppState>({ habits: [], goals: [], logs: {}, earnedBadges: [] });
   const [isLoaded, setIsLoaded] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved');
 
-  // --- Authentication & Data Loading (Local Storage) ---
+  // --- Authentication & Data Loading (Supabase) ---
   
   useEffect(() => {
-    const sessionStr = localStorage.getItem('habit_architect_session');
-    if (sessionStr) {
-      try {
-        const userData = JSON.parse(sessionStr);
-        if (userData && userData.id && userData.name) {
-             setUser(userData);
-             loadUserData(userData.id);
-        } else {
-             // Invalid session data
-             localStorage.removeItem('habit_architect_session');
-             setIsLoaded(true);
-        }
-      } catch (e) {
-        console.error("Invalid session", e);
-        localStorage.removeItem('habit_architect_session');
+    if (!isSupabaseConfigured() || !supabase) {
         setIsLoaded(true);
-      }
-    } else {
-      setIsLoaded(true);
+        return;
     }
+
+    // Local reference to guarantee non-null in closures
+    const client = supabase;
+
+    // Check active session
+    client.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+         const userData: User = {
+             id: session.user.id,
+             email: session.user.email || '',
+             name: session.user.user_metadata.full_name || session.user.email?.split('@')[0] || 'Architect'
+         };
+         setUser(userData);
+         loadUserData(userData.id);
+      } else {
+         setIsLoaded(true);
+      }
+    });
+
+    const {
+      data: { subscription },
+    } = client.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+         const userData: User = {
+             id: session.user.id,
+             email: session.user.email || '',
+             name: session.user.user_metadata.full_name || session.user.email?.split('@')[0] || 'Architect'
+         };
+         setUser(userData);
+         loadUserData(userData.id);
+      } else {
+         setUser(null);
+         setState({ habits: [], goals: [], logs: {}, earnedBadges: [] });
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const loadUserData = (userId: string) => {
+  const loadUserData = async (userId: string) => {
+    if (!supabase) return;
+    const client = supabase;
+
     try {
-      const dataStr = localStorage.getItem(`habit_architect_data_${userId}`);
-      if (dataStr) {
-        const loadedState = JSON.parse(dataStr);
+      const { data, error } = await client
+        .from('user_data')
+        .select('content')
+        .eq('user_id', userId)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+          console.error("Error loading data:", error);
+      }
+
+      if (data && data.content) {
+        const loadedState = data.content as AppState;
         if (!loadedState.earnedBadges) loadedState.earnedBadges = [];
         setState(loadedState);
       } else {
-        // First time user, could start fresh or with sample data
         console.log("No data found for user, starting fresh.");
       }
     } catch (err) {
@@ -124,14 +97,23 @@ const App = () => {
     }
   };
 
-  // Debounced Save Data to LocalStorage
+  // Debounced Save Data to Supabase
   useEffect(() => {
-    if (!isLoaded || !user) return;
+    if (!isLoaded || !user || !supabase) return;
+    const client = supabase;
 
-    const saveData = () => {
+    const saveData = async () => {
       setSaveStatus('saving');
       try {
-        localStorage.setItem(`habit_architect_data_${user.id}`, JSON.stringify(state));
+        const { error } = await client
+            .from('user_data')
+            .upsert({ 
+                user_id: user.id, 
+                content: state as any, // Cast to any for JSONB compatibility
+                updated_at: new Date().toISOString() 
+            });
+
+        if (error) throw error;
         setSaveStatus('saved');
       } catch (err) {
         console.error("Error saving data:", err);
@@ -139,7 +121,7 @@ const App = () => {
       }
     };
 
-    const timeoutId = setTimeout(saveData, 500);
+    const timeoutId = setTimeout(saveData, 1000); // 1s debounce for network calls
     return () => clearTimeout(timeoutId);
   }, [state, isLoaded, user]);
 
@@ -148,8 +130,8 @@ const App = () => {
     loadUserData(userData.id);
   };
 
-  const handleSignOut = () => {
-    localStorage.removeItem('habit_architect_session');
+  const handleSignOut = async () => {
+    if (supabase) await supabase.auth.signOut();
     setUser(null);
     setState({ habits: [], goals: [], logs: {}, earnedBadges: [] });
   };
@@ -302,8 +284,8 @@ const App = () => {
 
   // --- Actions ---
   const resetData = () => {
-      if(confirm("This will REPLACE your current data with sample data. Are you sure?")) {
-          setState(generateFakeData());
+      if(confirm("This will wipe your data in the database. Are you sure?")) {
+         setState({ habits: [], goals: [], logs: {}, earnedBadges: [] });
       }
   }
 
@@ -472,7 +454,7 @@ const App = () => {
           <div className="mt-auto pt-6 border-t border-slate-800 space-y-2">
               <div className="px-4 pb-4">
                   <span className={`text-xs font-bold px-2 py-1 rounded-full border ${saveStatus === 'error' ? 'border-rose-800 text-rose-400 bg-rose-950/30' : 'border-emerald-800 text-emerald-400 bg-emerald-950/30'}`}>
-                    {saveStatus === 'saving' ? 'Syncing...' : saveStatus === 'error' ? 'Sync Error' : 'Local Data'}
+                    {saveStatus === 'saving' ? 'Syncing...' : saveStatus === 'error' ? 'Sync Error' : 'Cloud Data'}
                   </span>
               </div>
               <button onClick={handleSignOut} className="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-rose-400 transition-colors text-sm font-medium w-full">
