@@ -1,3 +1,5 @@
+// /// <reference types="vite/client" />
+
 interface ImportMetaEnv {
   readonly API_KEY: string;
   readonly SUPABASE_URL: string;
@@ -8,6 +10,7 @@ interface ImportMeta {
   readonly env: ImportMetaEnv
 }
 
+// Augment the NodeJS namespace to fix 'process' errors without needing @types/node
 declare global {
   namespace NodeJS {
     interface ProcessEnv {
