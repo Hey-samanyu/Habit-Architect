@@ -4,8 +4,7 @@ import react from '@vitejs/plugin-react';
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current working directory.
-  // Fix: Cast process to any to avoid "Property 'cwd' does not exist on type 'Process'" error
-  const env = loadEnv(mode, (process as any).cwd(), '');
+  const env = loadEnv(mode, process.cwd(), '');
   
   // Helper to clean keys
   const cleanKey = (key: string | undefined) => {
@@ -24,6 +23,7 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     define: {
+      // Strictly define these as strings to ensure they are replaced at build time
       'process.env.API_KEY': JSON.stringify(apiKey),
       'process.env.SUPABASE_URL': JSON.stringify(supabaseUrl),
       'process.env.SUPABASE_ANON_KEY': JSON.stringify(supabaseKey),
