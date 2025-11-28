@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Calendar, Layout, BarChart3, CheckCircle2, Target, Menu, X, Home, ListChecks, PieChart, Activity, RotateCcw, Bell, LogOut, Medal } from 'lucide-react';
 import { format } from 'date-fns';
-import { auth, db, isFirebaseConfigured } from './services/firebase';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { supabase, isSupabaseConfigured } from './services/supabaseClient';
 
 import { Habit, Goal, Category, AppState, Frequency, DailyLog, User, Badge } from './types';
 import { AuthScreen } from './components/AuthScreen';
@@ -24,58 +22,69 @@ const App = () => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved');
 
-  // --- Authentication & Data Loading (Firebase) ---
+  // --- Authentication & Data Loading (Supabase) ---
   
   useEffect(() => {
-    // Create local reference to satisfy TypeScript that auth doesn't change between check and usage
-    const firebaseAuth = auth;
+    // Local ref for TS safety
+    const client = supabase;
 
-    if (!isFirebaseConfigured() || !firebaseAuth) {
+    if (!isSupabaseConfigured() || !client) {
         setIsLoaded(true);
         return;
     }
 
-    const unsubscribe = onAuthStateChanged(firebaseAuth, async (fbUser) => {
-        // STRICT VERIFICATION CHECK
-        if (fbUser && fbUser.emailVerified) {
-            const userData: User = {
-                id: fbUser.uid,
-                email: fbUser.email || '',
-                name: fbUser.displayName || fbUser.email?.split('@')[0] || 'Architect'
+    // Check active session
+    client.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user) {
+             const userData: User = {
+                id: session.user.id,
+                email: session.user.email || '',
+                name: session.user.user_metadata?.full_name || 'Architect'
             };
             setUser(userData);
             loadUserData(userData.id);
         } else {
-            // If user exists but not verified, or no user
-            if (fbUser && !fbUser.emailVerified) {
-                await signOut(firebaseAuth);
-            }
+            setIsLoaded(true);
+        }
+    });
+
+    const { data: { subscription } } = client.auth.onAuthStateChange((_event, session) => {
+        if (session?.user) {
+             const userData: User = {
+                id: session.user.id,
+                email: session.user.email || '',
+                name: session.user.user_metadata?.full_name || 'Architect'
+            };
+            setUser(userData);
+            loadUserData(userData.id);
+        } else {
             setUser(null);
             setState({ habits: [], goals: [], logs: {}, earnedBadges: [] });
             setIsLoaded(true);
         }
     });
 
-    return () => unsubscribe();
+    return () => subscription.unsubscribe();
   }, []);
 
   const loadUserData = async (userId: string) => {
-    if (!db) return;
-    const firestore = db; // Local reference to ensure type safety
+    const client = supabase;
+    if (!client) return;
 
     try {
-      const docRef = doc(firestore, "users", userId);
-      const docSnap = await getDoc(docRef);
+      const { data, error } = await client
+        .from('user_data')
+        .select('content')
+        .eq('user_id', userId)
+        .single();
 
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        if (data.content) {
-            const loadedState = JSON.parse(data.content) as AppState;
-            if (!loadedState.earnedBadges) loadedState.earnedBadges = [];
-            setState(loadedState);
-        }
-      } else {
-        console.log("No data found for user, starting fresh.");
+      if (data && data.content) {
+         // Supabase returns JSON automatically, no need to parse if column type is jsonb
+         const loadedState = data.content as AppState;
+         if (!loadedState.earnedBadges) loadedState.earnedBadges = [];
+         setState(loadedState);
+      } else if (error && error.code !== 'PGRST116') {
+         console.error("Error loading data:", error);
       }
     } catch (err) {
       console.error("Error loading data:", err);
@@ -84,20 +93,24 @@ const App = () => {
     }
   };
 
-  // Debounced Save Data to Firebase
+  // Debounced Save Data to Supabase
   useEffect(() => {
-    if (!isLoaded || !user || !db) return;
-    const firestore = db; // Local reference to ensure type safety inside async closure
+    if (!isLoaded || !user) return;
+    const client = supabase;
+    if (!client) return;
     
     const saveData = async () => {
       setSaveStatus('saving');
       try {
-        const docRef = doc(firestore, "users", user.id);
-        await setDoc(docRef, {
-            content: JSON.stringify(state),
-            updatedAt: new Date().toISOString()
-        }, { merge: true });
+        const { error } = await client
+            .from('user_data')
+            .upsert({ 
+                user_id: user.id, 
+                content: state,
+                updated_at: new Date().toISOString()
+            });
 
+        if (error) throw error;
         setSaveStatus('saved');
       } catch (err) {
         console.error("Error saving data:", err);
@@ -105,16 +118,16 @@ const App = () => {
       }
     };
 
-    const timeoutId = setTimeout(saveData, 1000); // 1s debounce for network calls
+    const timeoutId = setTimeout(saveData, 1000); // 1s debounce
     return () => clearTimeout(timeoutId);
   }, [state, isLoaded, user]);
 
   const handleAuthSuccess = (userData: User) => {
-    // Auth state listener will handle the rest
+    // Auth listener handles setting user state
   };
 
   const handleSignOut = async () => {
-    if (auth) await signOut(auth);
+    if (supabase) await supabase.auth.signOut();
   };
 
 
@@ -124,7 +137,7 @@ const App = () => {
   const [currentHabitTab, setCurrentHabitTab] = useState<Frequency>(Frequency.DAILY);
   const [isSidebarOpen, setSidebarOpen] = useState(false); 
   const [activeSection, setActiveSection] = useState('dashboard');
-  const [newBadge, setNewBadge] = useState<Badge | null>(null); // For badge modal
+  const [newBadge, setNewBadge] = useState<Badge | null>(null);
   const mainRef = useRef<HTMLDivElement>(null);
 
   // Form State
@@ -146,7 +159,7 @@ const App = () => {
       const newBadges: string[] = [];
       const todayKey = getTodayKey();
 
-      // 1. First Step: Created a habit
+      // 1. First Step
       if (newState.habits.length >= 1 && !earned.has('first_step')) newBadges.push('first_step');
 
       // 2. Streaks
@@ -155,18 +168,18 @@ const App = () => {
       if (maxStreak >= 7 && !earned.has('streak_7')) newBadges.push('streak_7');
       if (maxStreak >= 30 && !earned.has('streak_30')) newBadges.push('streak_30');
 
-      // 3. Architect: 5 Active Habits
+      // 3. Architect
       if (newState.habits.length >= 5 && !earned.has('architect')) newBadges.push('architect');
 
-      // 4. Goal Getter: Completed a goal
+      // 4. Goal Getter
       const completedGoals = newState.goals.filter(g => g.current >= g.target).length;
       if (completedGoals >= 1 && !earned.has('goal_getter')) newBadges.push('goal_getter');
 
-      // 5. Consistent: 50 Total Completions
+      // 5. Consistent
       const totalCompletions = Object.values(newState.logs).reduce((acc, log) => acc + log.completedHabitIds.length, 0);
       if (totalCompletions >= 50 && !earned.has('consistent')) newBadges.push('consistent');
 
-      // 6. High Flyer: 100% Today
+      // 6. High Flyer
       const todayLog = newState.logs[todayKey];
       const todayCompleted = todayLog ? todayLog.completedHabitIds.length : 0;
       const activeHabits = newState.habits.length;
@@ -174,11 +187,8 @@ const App = () => {
 
       if (newBadges.length > 0) {
           const updatedEarnedBadges = [...newState.earnedBadges, ...newBadges];
-          
-          // Trigger modal for the first new badge found
           const badgeDef = BADGES_LIST.find(b => b.id === newBadges[0]);
           if (badgeDef) setNewBadge(badgeDef);
-
           return { ...newState, earnedBadges: updatedEarnedBadges };
       }
 
@@ -248,7 +258,6 @@ const App = () => {
 
   if (!isLoaded) return <div className="min-h-screen flex items-center justify-center bg-slate-50"><div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div></div>;
 
-  // --- Auth Guard ---
   if (!user) {
       return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
   }
@@ -263,9 +272,8 @@ const App = () => {
     return "Good evening";
   };
 
-  // --- Actions ---
   const resetData = () => {
-      if(confirm("This will wipe your data in the database. Are you sure?")) {
+      if(confirm("This will wipe your data. Are you sure?")) {
          setState({ habits: [], goals: [], logs: {}, earnedBadges: [] });
       }
   }

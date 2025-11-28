@@ -1,3 +1,12 @@
-// This file is deprecated. Using services/firebase.ts instead.
-export const supabase = null;
-export const isSupabaseConfigured = () => false;
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_ANON_KEY;
+
+export const supabase = (supabaseUrl && supabaseKey) 
+  ? createClient(supabaseUrl, supabaseKey) 
+  : null;
+
+export const isSupabaseConfigured = () => {
+    return !!supabase;
+};
