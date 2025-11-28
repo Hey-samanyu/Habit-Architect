@@ -36,7 +36,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          shouldCreateUser: !isLogin, // Only create user if in Sign Up mode
+          // If logging in, don't accidentally create a new user. 
+          // If signing up, ensure we do create one.
+          shouldCreateUser: !isLogin, 
           data: !isLogin ? { full_name: name } : undefined,
         },
       });
@@ -45,7 +47,12 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
       setStep('otp');
     } catch (err: any) {
       console.error("Auth Error:", err);
-      setError(err.message || "Failed to send code. Please try again.");
+      // Supabase specific error for user not found when shouldCreateUser is false
+      if (err.message.includes("Signups not allowed") || err.message.includes("User not found")) {
+        setError("Account not found. Please Sign Up first.");
+      } else {
+        setError(err.message || "Failed to send code. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -59,15 +66,46 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
     if (!supabase) return;
 
     try {
-      const { data, error } = await supabase.auth.verifyOtp({
+      let data, error;
+
+      // STRATEGY: Try 'signup' token first (for new users)
+      // This is the most common failure point for new signups
+      console.log("Attempting verification: signup");
+      const signupResult = await supabase.auth.verifyOtp({
         email,
         token: otp,
-        type: 'magiclink', // This works for both signup and login OTPs
+        type: 'signup',
       });
+      
+      if (!signupResult.error) {
+          data = signupResult.data;
+      } else {
+          // If 'signup' failed, it might be an existing user logging in. Try 'magiclink'.
+          console.log("Signup failed, retrying: magiclink");
+          const magicLinkResult = await supabase.auth.verifyOtp({
+            email,
+            token: otp,
+            type: 'magiclink',
+          });
+          
+          if (!magicLinkResult.error) {
+              data = magicLinkResult.data;
+          } else {
+              // If that fails, try 'recovery' (sometimes used for password resets/old accounts)
+              console.log("Magiclink failed, retrying: recovery");
+              const recoveryResult = await supabase.auth.verifyOtp({
+                email,
+                token: otp,
+                type: 'recovery',
+              });
+              data = recoveryResult.data;
+              error = recoveryResult.error; // If this fails, we genuinely failed.
+          }
+      }
 
       if (error) throw error;
 
-      if (data.user) {
+      if (data?.user) {
         onAuthSuccess({
             id: data.user.id,
             email: data.user.email || '',
@@ -168,7 +206,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
                 <Loader2 className="animate-spin" size={24} />
               ) : (
                 <>
-                  {isLogin ? 'Send Login Link' : 'Send Verification Code'}
+                  {isLogin ? 'Send Login Code' : 'Send Verification Code'}
                   <ArrowRight size={20} />
                 </>
               )}
