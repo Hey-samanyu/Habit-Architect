@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, ArrowRight, Loader2, Layout, AlertCircle, Inbox, KeyRound, CheckCircle2 } from 'lucide-react';
+import { Mail, ArrowRight, Loader2, Layout, AlertCircle, Inbox, KeyRound, CheckCircle2, User as UserIcon } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
 import { User } from '../types';
 
@@ -9,7 +9,10 @@ interface AuthScreenProps {
 
 export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
   const [step, setStep] = useState<'email' | 'otp'>('email');
+  const [mode, setMode] = useState<'login' | 'signup'>('login');
+  
   const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,11 +29,12 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
     }
 
     try {
-      // We use signInWithOtp for both Login and Signup (Magic Link/Code flow)
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          shouldCreateUser: true, // Always allow creating user if they don't exist
+          shouldCreateUser: mode === 'signup', // Only allow creation in signup mode? Or allow flexible.
+          // Pass name metadata if signing up
+          data: mode === 'signup' ? { full_name: name } : undefined,
         },
       });
 
@@ -53,13 +57,17 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
 
     try {
       let data, error;
-      // Smart Verification: Try different token types in order of likelihood
       
-      const tokenTypes = ['signup', 'magiclink', 'recovery', 'email'] as const;
+      // Smart Verification: Try token types based on likelihood
+      // If in 'signup' mode, prioritize 'signup' token type.
+      // If in 'login' mode, prioritize 'magiclink'.
+      const primaryType = mode === 'signup' ? 'signup' : 'magiclink';
+      const secondaryType = mode === 'signup' ? 'magiclink' : 'signup';
+      
+      const tokenTypes = [primaryType, secondaryType, 'recovery', 'email'] as const;
       let success = false;
 
       for (const type of tokenTypes) {
-          console.log(`Attempting verification with type: ${type}`);
           const result = await supabase.auth.verifyOtp({
               email,
               token: otp,
@@ -69,10 +77,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
           if (!result.error && result.data?.user) {
               data = result.data;
               success = true;
-              break; // Stop if it worked
+              break; 
           }
-          
-          // Store the last error just in case none work
           if (result.error) error = result.error;
       }
 
@@ -82,12 +88,12 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
         onAuthSuccess({
             id: data.user.id,
             email: data.user.email || '',
-            name: data.user.user_metadata?.full_name || email.split('@')[0] || 'Architect'
+            name: data.user.user_metadata?.full_name || name || email.split('@')[0] || 'Architect'
         });
       }
     } catch (err: any) {
       console.error("Verification Error:", err);
-      setError(err.message || "Invalid code or expired. Please try again.");
+      setError("Invalid code or expired. Please check your email again.");
     } finally {
       setLoading(false);
     }
@@ -134,6 +140,44 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
 
         {step === 'email' ? (
           <form onSubmit={handleSendCode} className="space-y-5">
+            
+            {/* Header / Toggle */}
+            <div className="flex bg-slate-100 p-1 rounded-xl mb-4">
+                <button
+                    type="button"
+                    onClick={() => setMode('login')}
+                    className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${mode === 'login' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                    Log In
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setMode('signup')}
+                    className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${mode === 'signup' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                    Sign Up
+                </button>
+            </div>
+
+            {mode === 'signup' && (
+                <div className="animate-in slide-in-from-top-2 duration-200">
+                    <label className="block text-sm font-bold text-slate-700 mb-2 ml-1">Your Name</label>
+                    <div className="relative group">
+                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors">
+                            <UserIcon size={20} />
+                        </div>
+                        <input
+                            type="text"
+                            required
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition-all font-semibold text-slate-800"
+                            placeholder="Alex Smith"
+                        />
+                    </div>
+                </div>
+            )}
+
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-2 ml-1">Email Address</label>
               <div className="relative group">
@@ -160,13 +204,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
                 <Loader2 className="animate-spin" size={24} />
               ) : (
                 <>
-                  Get Login Code
+                  {mode === 'signup' ? 'Create Account' : 'Get Login Code'}
                   <ArrowRight size={20} />
                 </>
               )}
             </button>
             <p className="text-center text-xs text-slate-400 mt-4">
-                We'll email you a magic code for password-free login.
+                We'll email you a secure code to {mode === 'signup' ? 'verify your account' : 'log in'}.
             </p>
           </form>
         ) : (
@@ -197,7 +241,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
                   maxLength={10} 
                 />
               </div>
-              <p className="text-xs text-slate-400 mt-2 ml-1">Check your spam folder if it doesn't appear.</p>
             </div>
 
             <button
