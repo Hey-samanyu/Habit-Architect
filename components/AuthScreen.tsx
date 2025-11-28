@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, ArrowRight, Loader2, Layout, AlertCircle, User as UserIcon, Inbox, KeyRound, CheckCircle2 } from 'lucide-react';
+import { Mail, ArrowRight, Loader2, Layout, AlertCircle, Inbox, KeyRound, CheckCircle2 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
 import { User } from '../types';
 
@@ -8,13 +8,9 @@ interface AuthScreenProps {
 }
 
 export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
-  const [isLogin, setIsLogin] = useState(true);
   const [step, setStep] = useState<'email' | 'otp'>('email');
-  
   const [email, setEmail] = useState('');
-  const [name, setName] = useState('');
   const [otp, setOtp] = useState('');
-  
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,16 +26,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
     }
 
     try {
-      if (!isLogin && !name.trim()) throw new Error("Please enter your name");
-
-      // Send OTP (Magic Code)
+      // We use signInWithOtp for both Login and Signup (Magic Link/Code flow)
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          // If logging in, don't accidentally create a new user. 
-          // If signing up, ensure we do create one.
-          shouldCreateUser: !isLogin, 
-          data: !isLogin ? { full_name: name } : undefined,
+          shouldCreateUser: true, // Always allow creating user if they don't exist
         },
       });
 
@@ -47,12 +38,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
       setStep('otp');
     } catch (err: any) {
       console.error("Auth Error:", err);
-      // Supabase specific error for user not found when shouldCreateUser is false
-      if (err.message.includes("Signups not allowed") || err.message.includes("User not found")) {
-        setError("Account not found. Please Sign Up first.");
-      } else {
-        setError(err.message || "Failed to send code. Please try again.");
-      }
+      setError(err.message || "Failed to send code. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -67,54 +53,41 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
 
     try {
       let data, error;
-
-      // STRATEGY: Try 'signup' token first (for new users)
-      // This is the most common failure point for new signups
-      console.log("Attempting verification: signup");
-      const signupResult = await supabase.auth.verifyOtp({
-        email,
-        token: otp,
-        type: 'signup',
-      });
+      // Smart Verification: Try different token types in order of likelihood
       
-      if (!signupResult.error) {
-          data = signupResult.data;
-      } else {
-          // If 'signup' failed, it might be an existing user logging in. Try 'magiclink'.
-          console.log("Signup failed, retrying: magiclink");
-          const magicLinkResult = await supabase.auth.verifyOtp({
-            email,
-            token: otp,
-            type: 'magiclink',
+      const tokenTypes = ['signup', 'magiclink', 'recovery', 'email'] as const;
+      let success = false;
+
+      for (const type of tokenTypes) {
+          console.log(`Attempting verification with type: ${type}`);
+          const result = await supabase.auth.verifyOtp({
+              email,
+              token: otp,
+              type: type,
           });
-          
-          if (!magicLinkResult.error) {
-              data = magicLinkResult.data;
-          } else {
-              // If that fails, try 'recovery' (sometimes used for password resets/old accounts)
-              console.log("Magiclink failed, retrying: recovery");
-              const recoveryResult = await supabase.auth.verifyOtp({
-                email,
-                token: otp,
-                type: 'recovery',
-              });
-              data = recoveryResult.data;
-              error = recoveryResult.error; // If this fails, we genuinely failed.
+
+          if (!result.error && result.data?.user) {
+              data = result.data;
+              success = true;
+              break; // Stop if it worked
           }
+          
+          // Store the last error just in case none work
+          if (result.error) error = result.error;
       }
 
-      if (error) throw error;
+      if (!success && error) throw error;
 
       if (data?.user) {
         onAuthSuccess({
             id: data.user.id,
             email: data.user.email || '',
-            name: data.user.user_metadata?.full_name || name || 'Architect'
+            name: data.user.user_metadata?.full_name || email.split('@')[0] || 'Architect'
         });
       }
     } catch (err: any) {
       console.error("Verification Error:", err);
-      setError(err.message || "Invalid code. Please check and try again.");
+      setError(err.message || "Invalid code or expired. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -161,25 +134,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
 
         {step === 'email' ? (
           <form onSubmit={handleSendCode} className="space-y-5">
-            {!isLogin && (
-                <div className="animate-in fade-in slide-in-from-top-4">
-                    <label className="block text-sm font-bold text-slate-700 mb-2 ml-1">Full Name</label>
-                    <div className="relative group">
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors">
-                        <UserIcon size={20} />
-                    </div>
-                    <input
-                        type="text"
-                        required
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition-all font-semibold text-slate-800"
-                        placeholder="John Doe"
-                    />
-                    </div>
-                </div>
-            )}
-
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-2 ml-1">Email Address</label>
               <div className="relative group">
@@ -206,11 +160,14 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
                 <Loader2 className="animate-spin" size={24} />
               ) : (
                 <>
-                  {isLogin ? 'Send Login Code' : 'Send Verification Code'}
+                  Get Login Code
                   <ArrowRight size={20} />
                 </>
               )}
             </button>
+            <p className="text-center text-xs text-slate-400 mt-4">
+                We'll email you a magic code for password-free login.
+            </p>
           </form>
         ) : (
           <form onSubmit={handleVerifyCode} className="space-y-6 animate-in slide-in-from-right-8 duration-300">
@@ -225,7 +182,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2 ml-1">Enter 6-Digit Code</label>
+              <label className="block text-sm font-bold text-slate-700 mb-2 ml-1">Enter Code</label>
               <div className="relative group">
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors">
                   <KeyRound size={20} />
@@ -237,9 +194,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
                   onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, ''))}
                   className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition-all font-mono text-xl font-bold text-slate-800 tracking-widest placeholder:tracking-normal"
                   placeholder="123456"
-                  maxLength={6}
+                  maxLength={10} 
                 />
               </div>
+              <p className="text-xs text-slate-400 mt-2 ml-1">Check your spam folder if it doesn't appear.</p>
             </div>
 
             <button
@@ -266,22 +224,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
             </button>
           </form>
         )}
-
-        <div className="mt-8 pt-6 border-t border-slate-100 text-center">
-            <p className="text-slate-500 text-sm font-medium">
-                {isLogin ? "New to Habit Architect?" : "Already have an account?"}
-                <button
-                    onClick={() => {
-                        setIsLogin(!isLogin);
-                        setStep('email');
-                        setError(null);
-                    }}
-                    className="ml-2 text-indigo-600 font-bold hover:text-indigo-700 transition-colors"
-                >
-                {isLogin ? "Create Account" : "Sign In"}
-                </button>
-            </p>
-        </div>
       </div>
     </div>
   );
