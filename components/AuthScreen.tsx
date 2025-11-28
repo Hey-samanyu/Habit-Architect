@@ -29,12 +29,18 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
     }
 
     try {
+      // For Login: Use Magic Link (which sends a link but we can treat the token in URL as OTP if needed, 
+      // OR use OTP if configured). Supabase 'signInWithOtp' sends a generic OTP/Link email.
+      // For Signup: We want to ensure the user is created.
+      
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          shouldCreateUser: mode === 'signup', // Only allow creation in signup mode? Or allow flexible.
-          // Pass name metadata if signing up
+          shouldCreateUser: mode === 'signup',
           data: mode === 'signup' ? { full_name: name } : undefined,
+          // IMPORTANT: If you want a CODE, ensure your Supabase Email Template uses {{ .Token }}
+          // If you want a LINK, ensure it uses {{ .ConfirmationURL }}
+          // We are building UI for a CODE here.
         },
       });
 
@@ -59,8 +65,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
       let data, error;
       
       // Smart Verification: Try token types based on likelihood
-      // If in 'signup' mode, prioritize 'signup' token type.
-      // If in 'login' mode, prioritize 'magiclink'.
       const primaryType = mode === 'signup' ? 'signup' : 'magiclink';
       const secondaryType = mode === 'signup' ? 'magiclink' : 'signup';
       
@@ -226,7 +230,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2 ml-1">Enter Code</label>
+              <label className="block text-sm font-bold text-slate-700 mb-2 ml-1">Enter 8-Digit Code</label>
               <div className="relative group">
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors">
                   <KeyRound size={20} />
@@ -237,8 +241,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
                   value={otp}
                   onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, ''))}
                   className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition-all font-mono text-xl font-bold text-slate-800 tracking-widest placeholder:tracking-normal"
-                  placeholder="123456"
-                  maxLength={10} 
+                  placeholder="12345678"
+                  maxLength={8} 
                 />
               </div>
             </div>
