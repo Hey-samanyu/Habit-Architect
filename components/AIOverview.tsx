@@ -61,18 +61,18 @@ export const AIOverview: React.FC<AIOverviewProps> = ({ habits, goals, logs }) =
   };
 
   return (
-    <div className="bg-white rounded-2xl p-6 shadow-sm border border-indigo-100 relative overflow-hidden group hover:shadow-md transition-shadow">
-      <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-bl-full -mr-16 -mt-16 z-0 pointer-events-none"></div>
+    <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-violet-100 dark:border-slate-700 relative overflow-hidden group hover:shadow-md transition-all">
+      <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-violet-50 to-fuchsia-50 dark:from-violet-900/20 dark:to-fuchsia-900/20 rounded-bl-full -mr-16 -mt-16 z-0 pointer-events-none"></div>
 
       <div className="relative z-10">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="bg-indigo-600 p-2 rounded-lg shadow-sm shadow-indigo-200">
+            <div className="bg-violet-600 p-2 rounded-lg shadow-sm shadow-violet-200 dark:shadow-none">
               <Brain className="text-white" size={20} />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-800">AI Coach</h2>
-              <p className="text-xs text-slate-500 font-medium">Powered by Gemini</p>
+              <h2 className="text-lg font-bold text-slate-800 dark:text-white">AI Coach</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Powered by Gemini</p>
             </div>
           </div>
           
@@ -80,7 +80,7 @@ export const AIOverview: React.FC<AIOverviewProps> = ({ habits, goals, logs }) =
              {/* Share Button */}
              <button 
                 onClick={handleShareToWhatsApp}
-                className="flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-xl transition-all border border-emerald-100"
+                className="flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 rounded-xl transition-all border border-emerald-100 dark:border-emerald-900"
                 title="Share to WhatsApp"
               >
                 <Share2 size={16} />
@@ -90,7 +90,7 @@ export const AIOverview: React.FC<AIOverviewProps> = ({ habits, goals, logs }) =
               <button 
                 onClick={handleGenerate}
                 disabled={loading}
-                className="flex items-center gap-2 px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-xl text-sm font-bold transition-all disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 bg-violet-50 dark:bg-violet-900/30 hover:bg-violet-100 dark:hover:bg-violet-900/50 text-violet-600 dark:text-violet-400 rounded-xl text-sm font-bold transition-all disabled:opacity-50"
               >
                 {loading ? (
                   <RefreshCw className="animate-spin" size={16} />
@@ -103,17 +103,17 @@ export const AIOverview: React.FC<AIOverviewProps> = ({ habits, goals, logs }) =
         </div>
 
         {analysis ? (
-          <div className="bg-slate-50/80 rounded-xl p-5 border border-slate-100 animate-in fade-in duration-500">
-            <div className="prose prose-indigo prose-sm w-full max-w-none">
-               <p className="whitespace-pre-wrap leading-relaxed text-slate-800 font-medium">
+          <div className="bg-slate-50/80 dark:bg-slate-900/50 rounded-xl p-5 border border-slate-100 dark:border-slate-700 animate-in fade-in duration-500">
+            <div className="prose prose-violet dark:prose-invert prose-sm w-full max-w-none">
+               <p className="whitespace-pre-wrap leading-relaxed text-slate-800 dark:text-slate-200 font-medium">
                  {analysis}
                </p>
             </div>
           </div>
         ) : (
-          <div className="bg-slate-50 rounded-xl p-8 border border-dashed border-slate-200 text-center">
-            <Lightbulb className="mx-auto text-slate-400 mb-2" size={24} />
-            <p className="text-slate-600 text-sm font-medium">
+          <div className="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-8 border border-dashed border-slate-200 dark:border-slate-600 text-center">
+            <Lightbulb className="mx-auto text-slate-400 dark:text-slate-500 mb-2" size={24} />
+            <p className="text-slate-600 dark:text-slate-400 text-sm font-medium">
               Tap the button to analyze your habit patterns and get daily advice.
             </p>
           </div>

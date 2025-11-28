@@ -29,23 +29,22 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
     }
 
     try {
-      // For Login: Use Magic Link (which sends a link but we can treat the token in URL as OTP if needed, 
-      // OR use OTP if configured). Supabase 'signInWithOtp' sends a generic OTP/Link email.
-      // For Signup: We want to ensure the user is created.
-      
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
           shouldCreateUser: mode === 'signup',
           data: mode === 'signup' ? { full_name: name } : undefined,
-          // IMPORTANT: If you want a CODE, ensure your Supabase Email Template uses {{ .Token }}
-          // If you want a LINK, ensure it uses {{ .ConfirmationURL }}
-          // We are building UI for a CODE here.
+          emailRedirectTo: window.location.origin
         },
       });
 
       if (error) throw error;
-      setStep('otp');
+      
+      if (mode === 'login') {
+          setStep('otp'); // Actually shows "Check Email" screen for magic link
+      } else {
+          setStep('otp');
+      }
     } catch (err: any) {
       console.error("Auth Error:", err);
       setError(err.message || "Failed to send code. Please try again.");
@@ -64,7 +63,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
     try {
       let data, error;
       
-      // Smart Verification: Try token types based on likelihood
       const primaryType = mode === 'signup' ? 'signup' : 'magiclink';
       const secondaryType = mode === 'signup' ? 'magiclink' : 'signup';
       
@@ -105,40 +103,39 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
 
   if (!isSupabaseConfigured()) {
       return (
-          <div className="min-h-screen flex items-center justify-center bg-rose-50 p-4 font-sans">
-              <div className="bg-white p-8 rounded-3xl shadow-xl text-center max-w-md border border-rose-100">
-                  <div className="w-16 h-16 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className="min-h-screen flex items-center justify-center bg-rose-50 dark:bg-rose-950 p-4 font-sans">
+              <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl shadow-xl text-center max-w-md border border-rose-100 dark:border-rose-900">
+                  <div className="w-16 h-16 bg-rose-100 dark:bg-rose-900/30 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-4">
                      <AlertCircle size={32} />
                   </div>
-                  <h2 className="text-xl font-bold text-slate-800 mb-2">Configuration Error</h2>
-                  <p className="text-slate-600 mb-6">
+                  <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-2">Configuration Error</h2>
+                  <p className="text-slate-600 dark:text-slate-300 mb-6">
                       The app cannot connect to Supabase. API keys are missing.
                   </p>
-                  <p className="text-slate-500 text-xs bg-slate-100 p-3 rounded-lg font-mono">Add SUPABASE_URL and SUPABASE_ANON_KEY to Vercel Settings.</p>
+                  <p className="text-slate-500 dark:text-slate-400 text-xs bg-slate-100 dark:bg-slate-800 p-3 rounded-lg font-mono">Add SUPABASE_URL and SUPABASE_ANON_KEY to Vercel Settings.</p>
               </div>
           </div>
       );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] p-4 font-sans relative overflow-hidden">
-      {/* Background Decor */}
-      <div className="absolute top-0 left-0 w-full h-64 bg-indigo-600 skew-y-3 origin-top-left -translate-y-20 z-0"></div>
+    <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] dark:bg-slate-950 p-4 font-sans relative overflow-hidden transition-colors duration-500">
+      <div className="absolute top-0 left-0 w-full h-64 bg-violet-600 dark:bg-violet-900 skew-y-3 origin-top-left -translate-y-20 z-0 transition-colors duration-500"></div>
       
-      <div className="bg-white w-full max-w-md p-8 md:p-10 rounded-3xl shadow-2xl border border-slate-100 relative z-10 animate-in fade-in zoom-in duration-300">
+      <div className="bg-white dark:bg-slate-900 w-full max-w-md p-8 md:p-10 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 relative z-10 animate-in fade-in zoom-in duration-300">
         
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center p-3 bg-indigo-600 rounded-2xl shadow-lg shadow-indigo-200 mb-5">
+          <div className="inline-flex items-center justify-center p-3 bg-violet-600 rounded-2xl shadow-lg shadow-violet-200 dark:shadow-none mb-5">
             <Layout className="text-white" size={32} />
           </div>
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Habit<span className="text-indigo-600">Architect</span></h1>
-          <p className="text-slate-500 mt-2 font-medium">Design your habits, build your life.</p>
+          <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Habit<span className="text-violet-600 dark:text-violet-400">Architect</span></h1>
+          <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium">Design your habits, build your life.</p>
         </div>
 
         {error && (
-          <div className="mb-6 p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-start gap-3 animate-in slide-in-from-top-2">
+          <div className="mb-6 p-4 bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-800 rounded-2xl flex items-start gap-3 animate-in slide-in-from-top-2">
             <AlertCircle className="text-rose-500 shrink-0 mt-0.5" size={18} />
-            <p className="text-sm text-rose-600 font-bold">{error}</p>
+            <p className="text-sm text-rose-600 dark:text-rose-400 font-bold">{error}</p>
           </div>
         )}
 
@@ -146,18 +143,18 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
           <form onSubmit={handleSendCode} className="space-y-5">
             
             {/* Header / Toggle */}
-            <div className="flex bg-slate-100 p-1 rounded-xl mb-4">
+            <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl mb-4">
                 <button
                     type="button"
                     onClick={() => setMode('login')}
-                    className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${mode === 'login' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${mode === 'login' ? 'bg-white dark:bg-slate-700 text-violet-600 dark:text-violet-300 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}
                 >
                     Log In
                 </button>
                 <button
                     type="button"
                     onClick={() => setMode('signup')}
-                    className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${mode === 'signup' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${mode === 'signup' ? 'bg-white dark:bg-slate-700 text-violet-600 dark:text-violet-300 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}
                 >
                     Sign Up
                 </button>
@@ -165,9 +162,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
 
             {mode === 'signup' && (
                 <div className="animate-in slide-in-from-top-2 duration-200">
-                    <label className="block text-sm font-bold text-slate-700 mb-2 ml-1">Your Name</label>
+                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 ml-1">Your Name</label>
                     <div className="relative group">
-                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors">
+                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 group-focus-within:text-violet-500 dark:group-focus-within:text-violet-400 transition-colors">
                             <UserIcon size={20} />
                         </div>
                         <input
@@ -175,7 +172,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
                             required
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition-all font-semibold text-slate-800"
+                            className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:bg-white dark:focus:bg-slate-800 focus:border-violet-500 dark:focus:border-violet-500 focus:ring-4 focus:ring-violet-100 dark:focus:ring-violet-900/30 outline-none transition-all font-semibold text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600"
                             placeholder="Alex Smith"
                         />
                     </div>
@@ -183,9 +180,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
             )}
 
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2 ml-1">Email Address</label>
+              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 ml-1">Email Address</label>
               <div className="relative group">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 group-focus-within:text-violet-500 dark:group-focus-within:text-violet-400 transition-colors">
                   <Mail size={20} />
                 </div>
                 <input
@@ -193,7 +190,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition-all font-semibold text-slate-800"
+                  className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:bg-white dark:focus:bg-slate-800 focus:border-violet-500 dark:focus:border-violet-500 focus:ring-4 focus:ring-violet-100 dark:focus:ring-violet-900/30 outline-none transition-all font-semibold text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600"
                   placeholder="you@example.com"
                 />
               </div>
@@ -202,70 +199,82 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold text-lg shadow-xl shadow-indigo-200 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed mt-2"
+              className="w-full py-4 bg-violet-600 hover:bg-violet-700 dark:bg-violet-700 dark:hover:bg-violet-600 text-white rounded-2xl font-bold text-lg shadow-xl shadow-violet-200 dark:shadow-none transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed mt-2"
             >
               {loading ? (
                 <Loader2 className="animate-spin" size={24} />
               ) : (
                 <>
-                  {mode === 'signup' ? 'Create Account' : 'Get Login Code'}
+                  {mode === 'signup' ? 'Create Account' : 'Get Magic Link'}
                   <ArrowRight size={20} />
                 </>
               )}
             </button>
-            <p className="text-center text-xs text-slate-400 mt-4">
-                We'll email you a secure code to {mode === 'signup' ? 'verify your account' : 'log in'}.
+            <p className="text-center text-xs text-slate-400 dark:text-slate-500 mt-4">
+                We'll email you a secure link/code to {mode === 'signup' ? 'verify your account' : 'log in'}.
             </p>
           </form>
         ) : (
           <form onSubmit={handleVerifyCode} className="space-y-6 animate-in slide-in-from-right-8 duration-300">
-            <div className="bg-indigo-50 p-4 rounded-2xl flex items-center gap-4 mb-2">
-                <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 shrink-0">
+            <div className="bg-violet-50 dark:bg-violet-900/20 p-4 rounded-2xl flex items-center gap-4 mb-2">
+                <div className="w-10 h-10 bg-violet-100 dark:bg-violet-900/50 rounded-full flex items-center justify-center text-violet-600 dark:text-violet-400 shrink-0">
                     <Inbox size={20} />
                 </div>
                 <div>
-                    <p className="text-xs font-bold text-indigo-500 uppercase tracking-wide">Code Sent To</p>
-                    <p className="text-sm font-bold text-indigo-900">{email}</p>
+                    <p className="text-xs font-bold text-violet-500 dark:text-violet-400 uppercase tracking-wide">
+                        {mode === 'login' ? 'Magic Link Sent' : 'Code Sent To'}
+                    </p>
+                    <p className="text-sm font-bold text-violet-900 dark:text-violet-200">{email}</p>
                 </div>
             </div>
-
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2 ml-1">Enter 8-Digit Code</label>
-              <div className="relative group">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors">
-                  <KeyRound size={20} />
+            
+            {mode === 'login' ? (
+                <div className="text-center py-4">
+                     <p className="text-slate-600 dark:text-slate-300 font-medium mb-4">Check your email inbox and click the link to log in instantly!</p>
+                     <div className="w-16 h-1 bg-slate-100 dark:bg-slate-800 mx-auto rounded-full mb-4"></div>
+                     <p className="text-xs text-slate-400 dark:text-slate-500">You can close this tab if you opened the link on this device.</p>
                 </div>
-                <input
-                  type="text"
-                  required
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, ''))}
-                  className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition-all font-mono text-xl font-bold text-slate-800 tracking-widest placeholder:tracking-normal"
-                  placeholder="12345678"
-                  maxLength={8} 
-                />
-              </div>
-            </div>
+            ) : (
+                <div>
+                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 ml-1">Enter 8-Digit Code</label>
+                    <div className="relative group">
+                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 group-focus-within:text-violet-500 dark:group-focus-within:text-violet-400 transition-colors">
+                        <KeyRound size={20} />
+                        </div>
+                        <input
+                        type="text"
+                        required
+                        value={otp}
+                        onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, ''))}
+                        className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:bg-white dark:focus:bg-slate-800 focus:border-violet-500 dark:focus:border-violet-500 focus:ring-4 focus:ring-violet-100 dark:focus:ring-violet-900/30 outline-none transition-all font-mono text-xl font-bold text-slate-800 dark:text-white tracking-widest placeholder:tracking-normal placeholder:text-slate-300 dark:placeholder:text-slate-600"
+                        placeholder="12345678"
+                        maxLength={8} 
+                        />
+                    </div>
+                </div>
+            )}
 
-            <button
-              type="submit"
-              disabled={loading || otp.length < 6}
-              className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold text-lg shadow-xl shadow-indigo-200 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
-            >
-              {loading ? (
-                <Loader2 className="animate-spin" size={24} />
-              ) : (
-                <>
-                  Verify & Enter
-                  <CheckCircle2 size={20} />
-                </>
-              )}
-            </button>
+            {mode === 'signup' && (
+                <button
+                type="submit"
+                disabled={loading || otp.length < 6}
+                className="w-full py-4 bg-violet-600 hover:bg-violet-700 dark:bg-violet-700 dark:hover:bg-violet-600 text-white rounded-2xl font-bold text-lg shadow-xl shadow-violet-200 dark:shadow-none transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                >
+                {loading ? (
+                    <Loader2 className="animate-spin" size={24} />
+                ) : (
+                    <>
+                    Verify & Enter
+                    <CheckCircle2 size={20} />
+                    </>
+                )}
+                </button>
+            )}
             
             <button 
                 type="button" 
                 onClick={() => setStep('email')} 
-                className="w-full text-slate-500 text-sm font-semibold hover:text-indigo-600 transition-colors"
+                className="w-full text-slate-500 dark:text-slate-400 text-sm font-semibold hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
             >
                 Start Over
             </button>

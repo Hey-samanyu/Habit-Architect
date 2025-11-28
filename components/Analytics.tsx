@@ -18,7 +18,7 @@ const DonutChart: React.FC<{ data: { label: string, value: number, color: string
 
   if (total === 0) {
     return (
-      <div className="w-32 h-32 rounded-full border-4 border-slate-100 mx-auto flex items-center justify-center text-xs text-slate-500 font-medium">
+      <div className="w-32 h-32 rounded-full border-4 border-slate-100 dark:border-slate-700 mx-auto flex items-center justify-center text-xs text-slate-500 font-medium">
         No Data
       </div>
     );
@@ -31,13 +31,10 @@ const DonutChart: React.FC<{ data: { label: string, value: number, color: string
           const percentage = item.value / total;
           const angle = percentage * 360;
           
-          // Calculate path for segment
           const r = 40;
           const cx = 50;
           const cy = 50;
           
-          // Basic dasharray method for simple donut segments
-          // Circumference = 2 * pi * r = ~251.2
           const circumference = 2 * Math.PI * r;
           const dashLength = percentage * circumference;
           const gapLength = circumference - dashLength;
@@ -62,8 +59,8 @@ const DonutChart: React.FC<{ data: { label: string, value: number, color: string
         })}
       </svg>
       <div className="absolute inset-0 flex items-center justify-center flex-col">
-         <span className="text-2xl font-bold text-slate-800">{total}</span>
-         <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Habits</span>
+         <span className="text-2xl font-bold text-slate-800 dark:text-white">{total}</span>
+         <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold tracking-wider">Habits</span>
       </div>
     </div>
   );
@@ -141,7 +138,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ habits, goals, logs }) => 
     <div className="space-y-6">
       {/* Stats Row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="bg-gradient-to-br from-indigo-600 to-indigo-700 text-white border-none shadow-lg shadow-indigo-200">
+        <Card className="bg-gradient-to-br from-violet-600 to-indigo-700 text-white border-none shadow-lg shadow-violet-200 dark:shadow-none">
           <div className="flex items-center gap-3 mb-2 opacity-90">
             <Activity size={18} />
             <span className="text-sm font-medium">Today's Focus</span>
@@ -151,21 +148,21 @@ export const Analytics: React.FC<AnalyticsProps> = ({ habits, goals, logs }) => 
         </Card>
 
         <Card className="bg-white shadow-sm border-slate-100">
-          <div className="flex items-center gap-3 mb-2 text-emerald-600">
+          <div className="flex items-center gap-3 mb-2 text-emerald-600 dark:text-emerald-400">
             <Award size={18} />
             <span className="text-sm font-medium">Perfect Days</span>
           </div>
-          <div className="text-3xl font-bold text-slate-800">{perfectDays}</div>
-          <div className="text-slate-500 text-sm mt-1 font-medium">Total full completions</div>
+          <div className="text-3xl font-bold text-slate-800 dark:text-white">{perfectDays}</div>
+          <div className="text-slate-500 dark:text-slate-400 text-sm mt-1 font-medium">Total full completions</div>
         </Card>
 
         <Card className="bg-white shadow-sm border-slate-100">
-          <div className="flex items-center gap-3 mb-2 text-amber-600">
+          <div className="flex items-center gap-3 mb-2 text-amber-600 dark:text-amber-400">
             <TrendingUp size={18} />
             <span className="text-sm font-medium">Goals Crushed</span>
           </div>
-          <div className="text-3xl font-bold text-slate-800">{completedGoals}</div>
-          <div className="text-slate-500 text-sm mt-1 font-medium">Out of {goals.length} active</div>
+          <div className="text-3xl font-bold text-slate-800 dark:text-white">{completedGoals}</div>
+          <div className="text-slate-500 dark:text-slate-400 text-sm mt-1 font-medium">Out of {goals.length} active</div>
         </Card>
       </div>
 
@@ -175,15 +172,15 @@ export const Analytics: React.FC<AnalyticsProps> = ({ habits, goals, logs }) => 
         {/* Weekly Bar Chart - Now takes 2 cols */}
         <Card className="lg:col-span-2 p-6">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="font-bold text-slate-800 flex items-center gap-2">
-              <BarChart2 size={18} className="text-indigo-600" />
+            <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
+              <BarChart2 size={18} className="text-violet-600 dark:text-violet-400" />
               Weekly Consistency
             </h3>
             <div className="flex items-center gap-3">
-                <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-full">Last 7 Days</span>
+                <span className="text-xs font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-full">Last 7 Days</span>
                 <button 
                     onClick={handleShareWeekly}
-                    className="text-slate-400 hover:text-emerald-600 transition-colors"
+                    className="text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
                     title="Share Weekly Stats"
                 >
                     <Share2 size={16} />
@@ -194,11 +191,11 @@ export const Analytics: React.FC<AnalyticsProps> = ({ habits, goals, logs }) => 
           <div className="flex items-end justify-between gap-3 h-40">
             {weeklyData.map((day, index) => (
               <div key={index} className="flex flex-col items-center gap-2 flex-1 group h-full justify-end">
-                <div className="relative w-full bg-slate-100 rounded-t-lg rounded-b-sm overflow-hidden flex items-end group-hover:bg-slate-200 transition-colors h-full">
+                <div className="relative w-full bg-slate-100 dark:bg-slate-700 rounded-t-lg rounded-b-sm overflow-hidden flex items-end group-hover:bg-slate-200 dark:group-hover:bg-slate-600 transition-colors h-full">
                    <div 
                       className={`w-full transition-all duration-1000 ease-out absolute bottom-0 ${
                         day.percentage === 100 ? 'bg-emerald-500' : 
-                        day.percentage > 50 ? 'bg-indigo-600' : 'bg-indigo-400'
+                        day.percentage > 50 ? 'bg-violet-600 dark:bg-violet-500' : 'bg-violet-400 dark:bg-violet-700'
                       }`}
                       style={{ height: `${day.percentage}%` }}
                    />
@@ -208,7 +205,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ habits, goals, logs }) => 
                      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-2 h-2 bg-slate-800 rotate-45"></div>
                    </div>
                 </div>
-                <span className="text-xs font-bold text-slate-500">{day.day}</span>
+                <span className="text-xs font-bold text-slate-500 dark:text-slate-400">{day.day}</span>
               </div>
             ))}
           </div>
@@ -217,8 +214,8 @@ export const Analytics: React.FC<AnalyticsProps> = ({ habits, goals, logs }) => 
         {/* Category Distribution (Takes 1 col) */}
         <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
-             <h3 className="font-bold text-slate-800 flex items-center gap-2">
-               <PieChart size={18} className="text-indigo-600" />
+             <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
+               <PieChart size={18} className="text-violet-600 dark:text-violet-400" />
                Focus Areas
              </h3>
           </div>
@@ -228,9 +225,9 @@ export const Analytics: React.FC<AnalyticsProps> = ({ habits, goals, logs }) => 
               <div key={item.label} className="flex items-center justify-between text-sm">
                 <div className="flex items-center gap-2">
                   <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
-                  <span className="text-slate-600 font-medium">{item.label}</span>
+                  <span className="text-slate-600 dark:text-slate-400 font-medium">{item.label}</span>
                 </div>
-                <span className="font-bold text-slate-800">{item.value}</span>
+                <span className="font-bold text-slate-800 dark:text-white">{item.value}</span>
               </div>
             ))}
           </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Calendar, Layout, BarChart3, CheckCircle2, Target, Menu, X, Home, ListChecks, PieChart, Activity, RotateCcw, Bell, LogOut, Medal } from 'lucide-react';
+import { Plus, Calendar, Layout, BarChart3, CheckCircle2, Target, Menu, X, Home, ListChecks, PieChart, Activity, RotateCcw, Bell, LogOut, Medal, Moon, Sun } from 'lucide-react';
 import { format } from 'date-fns';
 import { supabase, isSupabaseConfigured } from './services/supabaseClient';
 
@@ -13,19 +13,38 @@ import { KairoChat } from './components/KairoChat';
 import { Achievements, BADGES_LIST } from './components/Achievements';
 import { Modal, Card } from './components/UIComponents';
 
-// Helper to get today's date string YYYY-MM-DD
 const getTodayKey = () => format(new Date(), 'yyyy-MM-dd');
 
-const App = () => {
+export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [state, setState] = useState<AppState>({ habits: [], goals: [], logs: {}, earnedBadges: [] });
   const [isLoaded, setIsLoaded] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved');
 
+  // Dark Mode State
+  const [darkMode, setDarkMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+        return localStorage.getItem('theme') === 'dark' || 
+               (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [darkMode]);
+
+  const toggleDarkMode = () => setDarkMode(!darkMode);
+
   // --- Authentication & Data Loading (Supabase) ---
   
   useEffect(() => {
-    // Local ref for TS safety
     const client = supabase;
 
     if (!isSupabaseConfigured() || !client) {
@@ -33,7 +52,6 @@ const App = () => {
         return;
     }
 
-    // Check active session
     client.auth.getSession().then(({ data: { session } }) => {
         if (session?.user) {
              const userData: User = {
@@ -79,7 +97,6 @@ const App = () => {
         .single();
 
       if (data && data.content) {
-         // Supabase returns JSON automatically, no need to parse if column type is jsonb
          const loadedState = data.content as AppState;
          if (!loadedState.earnedBadges) loadedState.earnedBadges = [];
          setState(loadedState);
@@ -93,7 +110,6 @@ const App = () => {
     }
   };
 
-  // Debounced Save Data to Supabase
   useEffect(() => {
     if (!isLoaded || !user) return;
     const client = supabase;
@@ -118,7 +134,7 @@ const App = () => {
       }
     };
 
-    const timeoutId = setTimeout(saveData, 1000); // 1s debounce
+    const timeoutId = setTimeout(saveData, 1000); 
     return () => clearTimeout(timeoutId);
   }, [state, isLoaded, user]);
 
@@ -153,33 +169,26 @@ const App = () => {
 
   const lastCheckedMinute = useRef<string>("");
 
-  // --- Achievement Engine ---
   const checkAchievements = (newState: AppState) => {
       const earned = new Set(newState.earnedBadges);
       const newBadges: string[] = [];
       const todayKey = getTodayKey();
 
-      // 1. First Step
       if (newState.habits.length >= 1 && !earned.has('first_step')) newBadges.push('first_step');
 
-      // 2. Streaks
       const maxStreak = Math.max(...newState.habits.map(h => h.streak), 0);
       if (maxStreak >= 3 && !earned.has('streak_3')) newBadges.push('streak_3');
       if (maxStreak >= 7 && !earned.has('streak_7')) newBadges.push('streak_7');
       if (maxStreak >= 30 && !earned.has('streak_30')) newBadges.push('streak_30');
 
-      // 3. Architect
       if (newState.habits.length >= 5 && !earned.has('architect')) newBadges.push('architect');
 
-      // 4. Goal Getter
       const completedGoals = newState.goals.filter(g => g.current >= g.target).length;
       if (completedGoals >= 1 && !earned.has('goal_getter')) newBadges.push('goal_getter');
 
-      // 5. Consistent
       const totalCompletions = Object.values(newState.logs).reduce((acc, log) => acc + log.completedHabitIds.length, 0);
       if (totalCompletions >= 50 && !earned.has('consistent')) newBadges.push('consistent');
 
-      // 6. High Flyer
       const todayLog = newState.logs[todayKey];
       const todayCompleted = todayLog ? todayLog.completedHabitIds.length : 0;
       const activeHabits = newState.habits.length;
@@ -195,7 +204,6 @@ const App = () => {
       return newState;
   };
 
-  // Notifications
   useEffect(() => {
     if ('Notification' in window && Notification.permission !== 'granted') {
       Notification.requestPermission();
@@ -231,7 +239,6 @@ const App = () => {
     return () => clearInterval(interval);
   }, [state.habits, state.logs]);
 
-  // Scroll Spy
   useEffect(() => {
     const main = mainRef.current;
     if (!main) return;
@@ -256,7 +263,7 @@ const App = () => {
     return () => observer.disconnect();
   }, [isLoaded]); 
 
-  if (!isLoaded) return <div className="min-h-screen flex items-center justify-center bg-slate-50"><div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div></div>;
+  if (!isLoaded) return <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900"><div className="w-8 h-8 border-4 border-violet-600 border-t-transparent rounded-full animate-spin"></div></div>;
 
   if (!user) {
       return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
@@ -400,19 +407,19 @@ const App = () => {
   const percentage = totalHabits > 0 ? Math.round((completedCount / totalHabits) * 100) : 0;
 
   return (
-    <div className="flex h-screen bg-[#f8fafc] text-slate-900 font-sans overflow-hidden">
+    <div className="flex h-screen bg-[#f8fafc] dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans overflow-hidden transition-colors duration-300">
       
       {/* Sidebar */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 dark:bg-black text-white transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex flex-col h-full p-6">
           <div className="flex items-center gap-3 mb-10">
-            <div className="bg-indigo-600 p-2 rounded-xl shadow-lg shadow-indigo-900/20">
+            <div className="bg-violet-600 p-2 rounded-xl shadow-lg shadow-violet-900/20">
               <Layout className="text-white" size={24} />
             </div>
             <h1 className="text-2xl font-extrabold tracking-tight text-white">
-              Habit<span className="text-indigo-400">Architect</span>
+              Habit<span className="text-violet-400">Architect</span>
             </h1>
-            <button onClick={() => setSidebarOpen(false)} className="lg:hidden ml-auto text-slate-400">
+            <button onClick={() => setSidebarOpen(false)} className="lg:hidden ml-auto text-slate-400 hover:text-white">
                 <X size={24} />
             </button>
           </div>
@@ -430,7 +437,7 @@ const App = () => {
                 onClick={() => scrollToSection(item.id)} 
                 className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-medium transition-all text-left ${
                   activeSection === item.id
-                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-900/20' 
+                    ? 'bg-violet-600 text-white shadow-md shadow-violet-900/20' 
                     : 'text-slate-400 hover:bg-white/5 hover:text-white'
                 }`}
               >
@@ -440,8 +447,19 @@ const App = () => {
             ))}
           </nav>
 
-          <div className="mt-auto pt-6 border-t border-slate-800 space-y-2">
-              <div className="px-4 pb-4">
+          <div className="mt-auto pt-6 border-t border-slate-800 space-y-4">
+              {/* Dark Mode Toggle in Sidebar */}
+              <div className="px-4">
+                 <button 
+                  onClick={toggleDarkMode}
+                  className="flex items-center gap-3 w-full text-sm font-medium text-slate-400 hover:text-white transition-colors"
+                >
+                  {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+                  {darkMode ? 'Light Mode' : 'Dark Mode'}
+                </button>
+              </div>
+
+              <div className="px-4">
                   <span className={`text-xs font-bold px-2 py-1 rounded-full border ${saveStatus === 'error' ? 'border-rose-800 text-rose-400 bg-rose-950/30' : 'border-emerald-800 text-emerald-400 bg-emerald-950/30'}`}>
                     {saveStatus === 'saving' ? 'Syncing...' : saveStatus === 'error' ? 'Sync Error' : 'Cloud Data'}
                   </span>
@@ -462,20 +480,20 @@ const App = () => {
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative">
         
         {/* Top Bar */}
-        <header className="h-16 border-b border-slate-200 bg-white/80 backdrop-blur-md flex items-center justify-between px-6 lg:px-8 z-10 shrink-0">
+        <header className="h-16 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md flex items-center justify-between px-6 lg:px-8 z-10 shrink-0 transition-colors">
             <div className="flex items-center gap-4">
-                <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 -ml-2 text-slate-600">
+                <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 -ml-2 text-slate-600 dark:text-slate-300">
                     <Menu size={24} />
                 </button>
-                <div className="flex items-center gap-2 text-slate-500 text-sm font-medium bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100">
+                <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm font-medium bg-slate-50 dark:bg-slate-800 px-3 py-1.5 rounded-full border border-slate-100 dark:border-slate-700">
                     <Calendar size={14} />
                     <span>{format(new Date(), 'EEEE, MMM do')}</span>
                 </div>
             </div>
             <div className="flex items-center gap-4">
-                <div className="flex items-center gap-3 text-sm font-medium text-slate-600">
+                <div className="flex items-center gap-3 text-sm font-medium text-slate-600 dark:text-slate-300">
                     <span className="hidden md:inline">{user.name}</span>
-                    <div className="w-8 h-8 bg-indigo-100 rounded-full border border-indigo-200 flex items-center justify-center text-indigo-700 font-bold text-xs uppercase">
+                    <div className="w-8 h-8 bg-violet-100 dark:bg-violet-900/30 rounded-full border border-violet-200 dark:border-violet-800 flex items-center justify-center text-violet-700 dark:text-violet-300 font-bold text-xs uppercase">
                         {user.name[0]}
                     </div>
                 </div>
@@ -489,17 +507,17 @@ const App = () => {
                 {/* Hero */}
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                     <div>
-                        <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">{getGreeting()}, {user.name.split(' ')[0]}</h2>
-                        <p className="text-slate-500 mt-1">Here's what's happening with your goals today.</p>
+                        <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight transition-colors">{getGreeting()}, {user.name.split(' ')[0]}</h2>
+                        <p className="text-slate-500 dark:text-slate-400 mt-1">Here's what's happening with your goals today.</p>
                     </div>
                     <div className="flex gap-3">
-                        <button onClick={openHabitModal} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl font-bold shadow-lg shadow-indigo-200 transition-all active:scale-95 text-sm">
+                        <button onClick={openHabitModal} className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 dark:bg-violet-600 dark:hover:bg-violet-500 text-white px-4 py-2.5 rounded-xl font-bold shadow-lg shadow-violet-200 dark:shadow-none transition-all active:scale-95 text-sm">
                             <Plus size={18} /> Add Habit
                         </button>
-                        <button onClick={() => setGoalModalOpen(true)} className="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-4 py-2.5 rounded-xl font-bold transition-all active:scale-95 text-sm">
+                        <button onClick={() => setGoalModalOpen(true)} className="flex items-center gap-2 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 px-4 py-2.5 rounded-xl font-bold transition-all active:scale-95 text-sm">
                             <Target size={18} /> Add Goal
                         </button>
-                        <button onClick={resetData} className="flex items-center gap-2 bg-white hover:bg-rose-50 text-slate-400 hover:text-rose-600 border border-slate-200 px-4 py-2.5 rounded-xl font-bold transition-all active:scale-95 text-sm" title="Reset Data">
+                        <button onClick={resetData} className="flex items-center gap-2 bg-white hover:bg-rose-50 dark:bg-slate-800 dark:hover:bg-rose-900/20 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 border border-slate-200 dark:border-slate-700 px-4 py-2.5 rounded-xl font-bold transition-all active:scale-95 text-sm" title="Reset Data">
                             <RotateCcw size={18} />
                         </button>
                     </div>
@@ -507,31 +525,31 @@ const App = () => {
 
                 {/* Metrics */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
-                    <Card className="p-5 flex items-center gap-5 border-l-4 border-l-emerald-500">
-                        <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
+                    <Card className="p-5 flex items-center gap-5 border-l-4 border-l-emerald-500 dark:border-l-emerald-400">
+                        <div className="w-12 h-12 rounded-full bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
                             <CheckCircle2 size={24} />
                         </div>
                         <div>
-                            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Daily Completion</p>
-                            <p className="text-2xl font-extrabold text-slate-800">{percentage}%</p>
+                            <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider">Daily Completion</p>
+                            <p className="text-2xl font-extrabold text-slate-800 dark:text-white">{percentage}%</p>
                         </div>
                     </Card>
-                    <Card className="p-5 flex items-center gap-5 border-l-4 border-l-indigo-500">
-                        <div className="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600">
+                    <Card className="p-5 flex items-center gap-5 border-l-4 border-l-violet-500 dark:border-l-violet-400">
+                        <div className="w-12 h-12 rounded-full bg-violet-50 dark:bg-violet-900/30 flex items-center justify-center text-violet-600 dark:text-violet-400">
                              <BarChart3 size={24} />
                         </div>
                         <div>
-                            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Total Habits</p>
-                            <p className="text-2xl font-extrabold text-slate-800">{state.habits.length}</p>
+                            <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider">Total Habits</p>
+                            <p className="text-2xl font-extrabold text-slate-800 dark:text-white">{state.habits.length}</p>
                         </div>
                     </Card>
-                    <Card className="p-5 flex items-center gap-5 border-l-4 border-l-amber-500">
-                        <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center text-amber-600">
+                    <Card className="p-5 flex items-center gap-5 border-l-4 border-l-amber-500 dark:border-l-amber-400">
+                        <div className="w-12 h-12 rounded-full bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 dark:text-amber-400">
                             <Target size={24} />
                         </div>
                         <div>
-                            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Active Goals</p>
-                            <p className="text-2xl font-extrabold text-slate-800">{state.goals.length}</p>
+                            <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider">Active Goals</p>
+                            <p className="text-2xl font-extrabold text-slate-800 dark:text-white">{state.goals.length}</p>
                         </div>
                     </Card>
                 </div>
@@ -540,24 +558,24 @@ const App = () => {
                     <div className="xl:col-span-2 space-y-8">
                         <AIOverview habits={state.habits} goals={state.goals} logs={state.logs} />
 
-                        <section id="habits" className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 scroll-mt-20">
+                        <section id="habits" className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 p-6 scroll-mt-20 transition-colors">
                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                                 <div>
-                                    <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                                        <ListChecks className="text-indigo-600" size={20} />
+                                    <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                                        <ListChecks className="text-violet-600 dark:text-violet-400" size={20} />
                                         Your Checklist
                                     </h3>
-                                    <p className="text-sm text-slate-500">Manage your daily tasks</p>
+                                    <p className="text-sm text-slate-500 dark:text-slate-400">Manage your daily tasks</p>
                                 </div>
-                                <div className="flex p-1 bg-slate-100 rounded-xl self-start sm:self-auto">
+                                <div className="flex p-1 bg-slate-100 dark:bg-slate-700/50 rounded-xl self-start sm:self-auto">
                                     {[Frequency.DAILY, Frequency.WEEKLY, Frequency.MONTHLY].map((tab) => (
                                     <button
                                         key={tab}
                                         onClick={() => setCurrentHabitTab(tab)}
                                         className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${
                                         currentHabitTab === tab 
-                                        ? 'bg-white text-slate-800 shadow-sm' 
-                                        : 'text-slate-500 hover:text-slate-700'
+                                        ? 'bg-white dark:bg-slate-600 text-slate-800 dark:text-white shadow-sm' 
+                                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
                                         }`}
                                     >
                                         {tab}
@@ -580,11 +598,11 @@ const App = () => {
                         <section id="achievements" className="scroll-mt-20">
                              <div className="flex items-center justify-between mb-6">
                                 <div>
-                                    <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                    <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
                                         <Medal className="text-amber-500" size={20} />
                                         Achievements
                                     </h3>
-                                    <p className="text-sm text-slate-500">Badges you've unlocked</p>
+                                    <p className="text-sm text-slate-500 dark:text-slate-400">Badges you've unlocked</p>
                                 </div>
                             </div>
                             <Achievements earnedBadgeIds={state.earnedBadges} />
@@ -592,14 +610,14 @@ const App = () => {
                     </div>
 
                     <div className="space-y-8">
-                         <section id="goals" className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 scroll-mt-20">
+                         <section id="goals" className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 p-6 scroll-mt-20 transition-colors">
                              <div className="flex items-center justify-between mb-6">
                                 <div>
-                                    <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                                        <Target className="text-indigo-600" size={20} />
+                                    <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                                        <Target className="text-violet-600 dark:text-violet-400" size={20} />
                                         Active Goals
                                     </h3>
-                                    <p className="text-sm text-slate-500">Track your milestones</p>
+                                    <p className="text-sm text-slate-500 dark:text-slate-400">Track your milestones</p>
                                 </div>
                             </div>
                             <GoalTracker 
@@ -609,14 +627,14 @@ const App = () => {
                             />
                         </section>
                         
-                         <div className="bg-gradient-to-br from-indigo-600 to-violet-700 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden group">
+                         <div className="bg-gradient-to-br from-violet-600 to-indigo-700 dark:from-violet-800 dark:to-indigo-900 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden group">
                              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-150 duration-700"></div>
                              <div className="relative z-10">
                                  <h4 className="font-bold text-lg mb-2">Keep it up! 🚀</h4>
-                                 <p className="text-indigo-100 text-sm leading-relaxed mb-4">
+                                 <p className="text-violet-100 dark:text-violet-200 text-sm leading-relaxed mb-4">
                                      Consistency is key. You're doing great. Check back in tomorrow to keep your streak alive.
                                  </p>
-                                 <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-indigo-200">
+                                 <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-violet-200 dark:text-violet-300">
                                      <Activity size={14} />
                                      Habit Architect AI
                                  </div>
@@ -633,27 +651,27 @@ const App = () => {
       {/* Badge Unlock Modal */}
       {newBadge && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-8 text-center relative overflow-hidden animate-in zoom-in duration-300">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm p-8 text-center relative overflow-hidden animate-in zoom-in duration-300 border border-white/10">
                 <button 
                     onClick={() => setNewBadge(null)}
-                    className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"
+                    className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
                 >
                     <X size={24} />
                 </button>
                 
-                <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-indigo-50 to-transparent -z-10"></div>
+                <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-violet-50 dark:from-violet-900/40 to-transparent -z-10"></div>
 
                 <div className={`w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl animate-bounce ${newBadge.color} text-white`}>
                     <Medal size={48} />
                 </div>
 
-                <h2 className="text-2xl font-extrabold text-slate-800 mb-2">Badge Unlocked!</h2>
-                <h3 className="text-xl font-bold text-indigo-600 mb-2">{newBadge.title}</h3>
-                <p className="text-slate-500 font-medium mb-6">{newBadge.description}</p>
+                <h2 className="text-2xl font-extrabold text-slate-800 dark:text-white mb-2">Badge Unlocked!</h2>
+                <h3 className="text-xl font-bold text-violet-600 dark:text-violet-400 mb-2">{newBadge.title}</h3>
+                <p className="text-slate-500 dark:text-slate-400 font-medium mb-6">{newBadge.description}</p>
 
                 <button 
                     onClick={() => setNewBadge(null)}
-                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-indigo-200 transition-all active:scale-95"
+                    className="w-full bg-violet-600 hover:bg-violet-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-violet-200 dark:shadow-none transition-all active:scale-95"
                 >
                     Awesome!
                 </button>
@@ -664,23 +682,23 @@ const App = () => {
       <Modal isOpen={isHabitModalOpen} onClose={() => setHabitModalOpen(false)} title="Create New Habit">
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-bold text-slate-700 mb-1.5">Habit Name</label>
+            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5">Habit Name</label>
             <input 
               type="text" 
               value={newHabitTitle}
               onChange={(e) => setNewHabitTitle(e.target.value)}
               placeholder="e.g. Morning Meditation"
-              className="w-full rounded-xl border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 px-4 py-2.5 border transition-all outline-none placeholder:text-slate-500 font-medium text-slate-800"
+              className="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:border-violet-500 dark:focus:border-violet-500 focus:ring-2 focus:ring-violet-200 dark:focus:ring-violet-900/30 px-4 py-2.5 border transition-all outline-none placeholder:text-slate-500 dark:placeholder:text-slate-600 font-medium text-slate-800 dark:text-white"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-1.5">Category</label>
+              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5">Category</label>
               <div className="relative">
                 <select 
                   value={newHabitCategory}
                   onChange={(e) => setNewHabitCategory(e.target.value as Category)}
-                  className="w-full rounded-xl border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 px-4 py-2.5 border transition-all outline-none appearance-none bg-white font-medium text-slate-800"
+                  className="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:border-violet-500 dark:focus:border-violet-500 focus:ring-2 focus:ring-violet-200 dark:focus:ring-violet-900/30 px-4 py-2.5 border transition-all outline-none appearance-none font-medium text-slate-800 dark:text-white"
                 >
                   {Object.values(Category).map((cat) => (
                     <option key={cat} value={cat}>{cat}</option>
@@ -692,12 +710,12 @@ const App = () => {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-1.5">Frequency</label>
+              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5">Frequency</label>
               <div className="relative">
                 <select 
                   value={newHabitFrequency}
                   onChange={(e) => setNewHabitFrequency(e.target.value as Frequency)}
-                  className="w-full rounded-xl border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 px-4 py-2.5 border transition-all outline-none appearance-none bg-white font-medium text-slate-800"
+                  className="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:border-violet-500 dark:focus:border-violet-500 focus:ring-2 focus:ring-violet-200 dark:focus:ring-violet-900/30 px-4 py-2.5 border transition-all outline-none appearance-none font-medium text-slate-800 dark:text-white"
                 >
                   {[Frequency.DAILY, Frequency.WEEKLY, Frequency.MONTHLY].map((freq) => (
                     <option key={freq} value={freq}>{freq}</option>
@@ -710,20 +728,20 @@ const App = () => {
             </div>
           </div>
           <div>
-            <label className="block text-sm font-bold text-slate-700 mb-1.5">Daily Reminder (Optional)</label>
+            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5">Daily Reminder (Optional)</label>
             <div className="relative">
               <input 
                 type="time"
                 value={newHabitReminder}
                 onChange={(e) => setNewHabitReminder(e.target.value)}
-                className="w-full rounded-xl border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 px-4 py-2.5 border transition-all outline-none bg-white font-medium text-slate-800"
+                className="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:border-violet-500 dark:focus:border-violet-500 focus:ring-2 focus:ring-violet-200 dark:focus:ring-violet-900/30 px-4 py-2.5 border transition-all outline-none font-medium text-slate-800 dark:text-white"
               />
               <Bell size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             </div>
           </div>
           <button 
             onClick={addHabit}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-indigo-200 mt-2"
+            className="w-full bg-violet-600 hover:bg-violet-700 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-violet-200 dark:shadow-none mt-2"
           >
             Create Habit
           </button>
@@ -733,33 +751,33 @@ const App = () => {
       <Modal isOpen={isGoalModalOpen} onClose={() => setGoalModalOpen(false)} title="Set New Goal">
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-bold text-slate-700 mb-1.5">Goal Title</label>
+            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5">Goal Title</label>
             <input 
               type="text" 
               value={newGoalTitle}
               onChange={(e) => setNewGoalTitle(e.target.value)}
               placeholder="e.g. Read Books"
-              className="w-full rounded-xl border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 px-4 py-2.5 border transition-all outline-none placeholder:text-slate-500 font-medium text-slate-800"
+              className="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:border-violet-500 dark:focus:border-violet-500 focus:ring-2 focus:ring-violet-200 dark:focus:ring-violet-900/30 px-4 py-2.5 border transition-all outline-none placeholder:text-slate-500 dark:placeholder:text-slate-600 font-medium text-slate-800 dark:text-white"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
              <div>
-              <label className="block text-sm font-bold text-slate-700 mb-1.5">Target Amount</label>
+              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5">Target Amount</label>
               <input 
                 type="number" 
                 value={newGoalTarget}
                 onChange={(e) => setNewGoalTarget(Number(e.target.value))}
-                className="w-full rounded-xl border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 px-4 py-2.5 border transition-all outline-none font-medium text-slate-800"
+                className="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:border-violet-500 dark:focus:border-violet-500 focus:ring-2 focus:ring-violet-200 dark:focus:ring-violet-900/30 px-4 py-2.5 border transition-all outline-none font-medium text-slate-800 dark:text-white"
               />
             </div>
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-1.5">Unit</label>
+              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5">Unit</label>
               <input 
                 type="text" 
                 value={newGoalUnit}
                 onChange={(e) => setNewGoalUnit(e.target.value)}
                 placeholder="e.g. pages"
-                className="w-full rounded-xl border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 px-4 py-2.5 border transition-all outline-none placeholder:text-slate-500 font-medium text-slate-800"
+                className="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:border-violet-500 dark:focus:border-violet-500 focus:ring-2 focus:ring-violet-200 dark:focus:ring-violet-900/30 px-4 py-2.5 border transition-all outline-none placeholder:text-slate-500 dark:placeholder:text-slate-600 font-medium text-slate-800 dark:text-white"
               />
             </div>
           </div>
@@ -771,8 +789,8 @@ const App = () => {
                     onClick={() => setNewGoalUnit(unit)}
                     className={`text-xs font-bold px-2.5 py-1.5 rounded-lg border transition-all ${
                       newGoalUnit === unit
-                        ? 'bg-indigo-100 border-indigo-200 text-indigo-700'
-                        : 'bg-white border-slate-200 text-slate-500 hover:border-indigo-200 hover:text-indigo-600'
+                        ? 'bg-violet-100 dark:bg-violet-900/40 border-violet-200 dark:border-violet-700 text-violet-700 dark:text-violet-300'
+                        : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-violet-200 hover:text-violet-600'
                     }`}
                   >
                     {unit}
@@ -780,12 +798,12 @@ const App = () => {
                 ))}
             </div>
           <div>
-            <label className="block text-sm font-bold text-slate-700 mb-1.5">Frequency</label>
+            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-1.5">Frequency</label>
             <div className="relative">
               <select 
                 value={newGoalFrequency}
                 onChange={(e) => setNewGoalFrequency(e.target.value as Frequency)}
-                className="w-full rounded-xl border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 px-4 py-2.5 border transition-all outline-none appearance-none bg-white font-medium text-slate-800"
+                className="w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:border-violet-500 dark:focus:border-violet-500 focus:ring-2 focus:ring-violet-200 dark:focus:ring-violet-900/30 px-4 py-2.5 border transition-all outline-none appearance-none font-medium text-slate-800 dark:text-white"
               >
                 {Object.values(Frequency).map((freq) => (
                   <option key={freq} value={freq}>{freq}</option>
@@ -798,7 +816,7 @@ const App = () => {
           </div>
           <button 
             onClick={addGoal}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-indigo-200 mt-2"
+            className="w-full bg-violet-600 hover:bg-violet-700 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-violet-200 dark:shadow-none mt-2"
           >
             Set Goal
           </button>
@@ -806,6 +824,4 @@ const App = () => {
       </Modal>
     </div>
   );
-};
-
-export default App;
+}
