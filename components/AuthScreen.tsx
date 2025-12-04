@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, ArrowRight, Loader2, Layout, AlertCircle, Inbox, KeyRound, CheckCircle2, User as UserIcon } from 'lucide-react';
+import { Mail, ArrowRight, Loader2, Layout, AlertCircle, Inbox, KeyRound, CheckCircle2, User as UserIcon, RefreshCw, ArrowLeft, RotateCcw } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
 import { User } from '../types';
 
@@ -16,9 +16,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resendTimer, setResendTimer] = useState(0);
 
-  const handleSendCode = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSendCode = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setLoading(true);
     setError(null);
 
@@ -34,24 +35,25 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
         options: {
           shouldCreateUser: mode === 'signup',
           data: mode === 'signup' ? { full_name: name } : undefined,
-          emailRedirectTo: window.location.origin
         },
       });
 
       if (error) throw error;
       
-      // If login mode, show Magic Link sent screen
-      // If signup mode, show Code input screen
-      if (mode === 'login') {
-          setStep('otp'); 
-      } else {
-          setStep('otp');
-      }
+      setStep('otp'); 
+      setResendTimer(30);
+      const timer = setInterval(() => {
+        setResendTimer((prev) => {
+          if (prev <= 1) clearInterval(timer);
+          return prev - 1;
+        });
+      }, 1000);
+
     } catch (err: any) {
       console.error("Auth Error:", err);
       let msg = err.message || "Failed to send code. Please try again.";
-      if (msg.includes("Failed to fetch")) {
-          msg = "Connection failed. Check your internet or Supabase URL (ensure it starts with https://).";
+      if (msg.includes("Failed to fetch") || msg.includes("NetworkError")) {
+          msg = "Connection failed. Check your internet or Supabase URL (ensure it starts with https://). If you recently restored the project, wait a few minutes.";
       }
       setError(msg);
     } finally {
@@ -70,7 +72,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
       let data, error;
       
       // Smart Verification: Try different token types to handle edge cases
-      // where a user might be 'signup' state but Supabase treats them as 'magiclink' (existing)
       const primaryType = mode === 'signup' ? 'signup' : 'magiclink';
       const secondaryType = mode === 'signup' ? 'magiclink' : 'signup';
       
@@ -90,7 +91,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
               break; 
           }
           if (result.error) {
-              // Store last error but keep trying
               error = result.error;
           }
       }
@@ -146,7 +146,14 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
         {error && (
           <div className="mb-6 p-4 bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-800 rounded-2xl flex items-start gap-3 animate-in slide-in-from-top-2">
             <AlertCircle className="text-rose-500 shrink-0 mt-0.5" size={18} />
-            <p className="text-sm text-rose-600 dark:text-rose-400 font-bold">{error}</p>
+            <div className="flex-1">
+                <p className="text-sm text-rose-600 dark:text-rose-400 font-bold leading-tight">{error}</p>
+                {error.includes("Connection failed") && (
+                    <button onClick={() => window.location.reload()} className="mt-2 text-xs font-bold bg-white dark:bg-rose-800 px-2 py-1 rounded border border-rose-200 dark:border-rose-700 text-rose-600 dark:text-white flex items-center gap-1">
+                        <RefreshCw size={10} /> Reload Page
+                    </button>
+                )}
+            </div>
           </div>
         )}
 
@@ -216,79 +223,86 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
                 <Loader2 className="animate-spin" size={24} />
               ) : (
                 <>
-                  {mode === 'signup' ? 'Create Account' : 'Get Magic Link'}
+                  {mode === 'signup' ? 'Create Account' : 'Get Login Code'}
                   <ArrowRight size={20} />
                 </>
               )}
             </button>
             <p className="text-center text-xs text-slate-400 dark:text-slate-500 mt-4">
-                We'll email you a secure link/code to {mode === 'signup' ? 'verify your account' : 'log in'}.
+                We'll email you a secure code to {mode === 'signup' ? 'verify your account' : 'log in'}.
             </p>
           </form>
         ) : (
           <form onSubmit={handleVerifyCode} className="space-y-6 animate-in slide-in-from-right-8 duration-300">
-            <div className="bg-violet-50 dark:bg-violet-900/20 p-4 rounded-2xl flex items-center gap-4 mb-2">
+            <div className="bg-violet-50 dark:bg-violet-900/20 p-4 rounded-2xl flex items-center gap-4 mb-2 border border-violet-100 dark:border-violet-800">
                 <div className="w-10 h-10 bg-violet-100 dark:bg-violet-900/50 rounded-full flex items-center justify-center text-violet-600 dark:text-violet-400 shrink-0">
                     <Inbox size={20} />
                 </div>
                 <div>
                     <p className="text-xs font-bold text-violet-500 dark:text-violet-400 uppercase tracking-wide">
-                        {mode === 'login' ? 'Magic Link Sent' : 'Code Sent To'}
+                        Code Sent To
                     </p>
                     <p className="text-sm font-bold text-violet-900 dark:text-violet-200">{email}</p>
                 </div>
             </div>
             
-            {mode === 'login' ? (
-                <div className="text-center py-4">
-                     <p className="text-slate-600 dark:text-slate-300 font-medium mb-4">Check your email inbox and click the link to log in instantly!</p>
-                     <div className="w-16 h-1 bg-slate-100 dark:bg-slate-800 mx-auto rounded-full mb-4"></div>
-                     <p className="text-xs text-slate-400 dark:text-slate-500">You can close this tab if you opened the link on this device.</p>
-                </div>
-            ) : (
-                <div>
-                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 ml-1">Enter Confirmation Code</label>
-                    <div className="relative group">
-                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 group-focus-within:text-violet-500 dark:group-focus-within:text-violet-400 transition-colors">
-                        <KeyRound size={20} />
-                        </div>
-                        <input
-                        type="text"
-                        required
-                        value={otp}
-                        onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, ''))}
-                        className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:bg-white dark:focus:bg-slate-800 focus:border-violet-500 dark:focus:border-violet-500 focus:ring-4 focus:ring-violet-100 dark:focus:ring-violet-900/30 outline-none transition-all font-mono text-xl font-bold text-slate-800 dark:text-white tracking-widest placeholder:tracking-normal placeholder:text-slate-300 dark:placeholder:text-slate-600"
-                        placeholder="123456"
-                        maxLength={10} 
-                        />
+            <div>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 ml-1">Enter Code</label>
+                <div className="relative group">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 group-focus-within:text-violet-500 dark:group-focus-within:text-violet-400 transition-colors">
+                    <KeyRound size={20} />
                     </div>
+                    <input
+                    type="text"
+                    required
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, ''))}
+                    className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:bg-white dark:focus:bg-slate-800 focus:border-violet-500 dark:focus:border-violet-500 focus:ring-4 focus:ring-violet-100 dark:focus:ring-violet-900/30 outline-none transition-all font-mono text-xl font-bold text-slate-800 dark:text-white tracking-widest placeholder:tracking-normal placeholder:text-slate-300 dark:placeholder:text-slate-600"
+                    placeholder="123456"
+                    maxLength={8} 
+                    />
                 </div>
-            )}
+                <p className="text-xs text-slate-400 mt-2 ml-1">Check your email for the verification code.</p>
+            </div>
 
-            {mode === 'signup' && (
-                <button
-                type="submit"
-                disabled={loading || otp.length < 6}
-                className="w-full py-4 bg-violet-600 hover:bg-violet-700 dark:bg-violet-700 dark:hover:bg-violet-600 text-white rounded-2xl font-bold text-lg shadow-xl shadow-violet-200 dark:shadow-none transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
-                >
-                {loading ? (
-                    <Loader2 className="animate-spin" size={24} />
-                ) : (
-                    <>
-                    Verify & Enter
-                    <CheckCircle2 size={20} />
-                    </>
-                )}
-                </button>
-            )}
-            
-            <button 
-                type="button" 
-                onClick={() => setStep('email')} 
-                className="w-full text-slate-500 dark:text-slate-400 text-sm font-semibold hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
+            <button
+            type="submit"
+            disabled={loading || otp.length < 6}
+            className="w-full py-4 bg-violet-600 hover:bg-violet-700 dark:bg-violet-700 dark:hover:bg-violet-600 text-white rounded-2xl font-bold text-lg shadow-xl shadow-violet-200 dark:shadow-none transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
             >
-                Start Over
+            {loading ? (
+                <Loader2 className="animate-spin" size={24} />
+            ) : (
+                <>
+                Verify & Enter
+                <CheckCircle2 size={20} />
+                </>
+            )}
             </button>
+            
+            <div className="flex items-center justify-between gap-4 mt-2">
+                <button 
+                    type="button" 
+                    onClick={() => setStep('email')} 
+                    className="text-slate-500 dark:text-slate-400 text-sm font-semibold hover:text-violet-600 dark:hover:text-violet-400 transition-colors flex items-center gap-1"
+                >
+                    <ArrowLeft size={14} /> Back
+                </button>
+                <button 
+                    type="button"
+                    onClick={() => handleSendCode()}
+                    disabled={resendTimer > 0 || loading}
+                    className="text-slate-500 dark:text-slate-400 text-sm font-semibold hover:text-violet-600 dark:hover:text-violet-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                >
+                   {resendTimer > 0 ? (
+                        <span className="text-slate-400">Wait {resendTimer}s</span>
+                   ) : (
+                       <>
+                       <RotateCcw size={14} /> Resend Code
+                       </>
+                   )}
+                </button>
+            </div>
           </form>
         )}
       </div>
