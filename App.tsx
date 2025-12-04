@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { Plus, Calendar, Layout, BarChart3, CheckCircle2, Target, Menu, X, Home, ListChecks, PieChart, Activity, RotateCcw, Bell, LogOut, Medal, Moon, Sun } from 'lucide-react';
 import { format } from 'date-fns';
 import { supabase, isSupabaseConfigured } from './services/supabaseClient';
@@ -8,12 +8,21 @@ import { AuthScreen } from './components/AuthScreen';
 import { HabitTracker } from './components/HabitTracker';
 import { GoalTracker } from './components/GoalTracker';
 import { AIOverview } from './components/AIOverview';
-import { Analytics } from './components/Analytics';
-import { KairoChat } from './components/KairoChat';
-import { Achievements, BADGES_LIST } from './components/Achievements';
+// Lazy load heavy components
+const Analytics = lazy(() => import('./components/Analytics').then(module => ({ default: module.Analytics })));
+const KairoChat = lazy(() => import('./components/KairoChat').then(module => ({ default: module.KairoChat })));
+const Achievements = lazy(() => import('./components/Achievements').then(module => ({ default: module.Achievements })));
+
+import { BADGES_LIST } from './components/Achievements';
 import { Modal, Card } from './components/UIComponents';
 
 const getTodayKey = () => format(new Date(), 'yyyy-MM-dd');
+
+const SectionLoader = () => (
+  <div className="flex items-center justify-center py-20">
+    <div className="w-8 h-8 border-4 border-violet-200 border-t-violet-600 rounded-full animate-spin"></div>
+  </div>
+);
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -52,6 +61,7 @@ export default function App() {
         return;
     }
 
+    // Check active session
     client.auth.getSession().then(({ data: { session } }) => {
         if (session?.user) {
              const userData: User = {
@@ -134,7 +144,7 @@ export default function App() {
       }
     };
 
-    const timeoutId = setTimeout(saveData, 1000); 
+    const timeoutId = setTimeout(saveData, 2000); // Debounce increased to 2s to reduce writes
     return () => clearTimeout(timeoutId);
   }, [state, isLoaded, user]);
 
@@ -245,7 +255,7 @@ export default function App() {
 
     const observerOptions = {
       root: main,
-      threshold: 0.2,
+      threshold: 0.1, // Reduced threshold for better mobile performance
       rootMargin: '-10% 0px -50% 0px'
     };
 
@@ -263,7 +273,14 @@ export default function App() {
     return () => observer.disconnect();
   }, [isLoaded]); 
 
-  if (!isLoaded) return <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900"><div className="w-8 h-8 border-4 border-violet-600 border-t-transparent rounded-full animate-spin"></div></div>;
+  if (!isLoaded) return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 transition-colors">
+        <div className="flex flex-col items-center gap-4">
+            <div className="w-12 h-12 border-4 border-violet-200 border-t-violet-600 rounded-full animate-spin"></div>
+            <p className="text-slate-500 font-medium animate-pulse">Building your architect...</p>
+        </div>
+    </div>
+  );
 
   if (!user) {
       return <AuthScreen onAuthSuccess={handleAuthSuccess} />;
@@ -592,7 +609,9 @@ export default function App() {
                         </section>
 
                          <section id="analytics" className="scroll-mt-20">
-                            <Analytics habits={state.habits} goals={state.goals} logs={state.logs} />
+                            <Suspense fallback={<SectionLoader />}>
+                                <Analytics habits={state.habits} goals={state.goals} logs={state.logs} />
+                            </Suspense>
                         </section>
 
                         <section id="achievements" className="scroll-mt-20">
@@ -605,7 +624,9 @@ export default function App() {
                                     <p className="text-sm text-slate-500 dark:text-slate-400">Badges you've unlocked</p>
                                 </div>
                             </div>
-                            <Achievements earnedBadgeIds={state.earnedBadges} />
+                            <Suspense fallback={<SectionLoader />}>
+                                <Achievements earnedBadgeIds={state.earnedBadges} />
+                            </Suspense>
                         </section>
                     </div>
 
@@ -646,7 +667,9 @@ export default function App() {
         </main>
       </div>
 
-      <KairoChat habits={state.habits} goals={state.goals} logs={state.logs} />
+      <Suspense fallback={null}>
+        <KairoChat habits={state.habits} goals={state.goals} logs={state.logs} />
+      </Suspense>
 
       {/* Badge Unlock Modal */}
       {newBadge && (
