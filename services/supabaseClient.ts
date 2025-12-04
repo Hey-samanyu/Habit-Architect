@@ -1,7 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.SUPABASE_URL;
+let supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_ANON_KEY;
+
+// Robustly fix URL if user forgot https://
+if (supabaseUrl && !supabaseUrl.startsWith('http')) {
+    supabaseUrl = `https://${supabaseUrl}`;
+}
 
 export const supabase = (supabaseUrl && supabaseKey) 
   ? createClient(supabaseUrl, supabaseKey) 

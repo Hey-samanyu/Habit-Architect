@@ -40,14 +40,20 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
 
       if (error) throw error;
       
+      // If login mode, show Magic Link sent screen
+      // If signup mode, show Code input screen
       if (mode === 'login') {
-          setStep('otp'); // Actually shows "Check Email" screen for magic link
+          setStep('otp'); 
       } else {
           setStep('otp');
       }
     } catch (err: any) {
       console.error("Auth Error:", err);
-      setError(err.message || "Failed to send code. Please try again.");
+      let msg = err.message || "Failed to send code. Please try again.";
+      if (msg.includes("Failed to fetch")) {
+          msg = "Connection failed. Check your internet or Supabase URL (ensure it starts with https://).";
+      }
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -63,6 +69,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
     try {
       let data, error;
       
+      // Smart Verification: Try different token types to handle edge cases
+      // where a user might be 'signup' state but Supabase treats them as 'magiclink' (existing)
       const primaryType = mode === 'signup' ? 'signup' : 'magiclink';
       const secondaryType = mode === 'signup' ? 'magiclink' : 'signup';
       
@@ -81,7 +89,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
               success = true;
               break; 
           }
-          if (result.error) error = result.error;
+          if (result.error) {
+              // Store last error but keep trying
+              error = result.error;
+          }
       }
 
       if (!success && error) throw error;
@@ -146,14 +157,14 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
             <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl mb-4">
                 <button
                     type="button"
-                    onClick={() => setMode('login')}
+                    onClick={() => { setMode('login'); setError(null); }}
                     className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${mode === 'login' ? 'bg-white dark:bg-slate-700 text-violet-600 dark:text-violet-300 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}
                 >
                     Log In
                 </button>
                 <button
                     type="button"
-                    onClick={() => setMode('signup')}
+                    onClick={() => { setMode('signup'); setError(null); }}
                     className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${mode === 'signup' ? 'bg-white dark:bg-slate-700 text-violet-600 dark:text-violet-300 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}
                 >
                     Sign Up
@@ -171,7 +182,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
                             type="text"
                             required
                             value={name}
-                            onChange={(e) => setName(e.target.value)}
+                            onChange={(e) => { setName(e.target.value); setError(null); }}
                             className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:bg-white dark:focus:bg-slate-800 focus:border-violet-500 dark:focus:border-violet-500 focus:ring-4 focus:ring-violet-100 dark:focus:ring-violet-900/30 outline-none transition-all font-semibold text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600"
                             placeholder="Alex Smith"
                         />
@@ -189,7 +200,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
                   type="email"
                   required
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => { setEmail(e.target.value); setError(null); }}
                   className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:bg-white dark:focus:bg-slate-800 focus:border-violet-500 dark:focus:border-violet-500 focus:ring-4 focus:ring-violet-100 dark:focus:ring-violet-900/30 outline-none transition-all font-semibold text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600"
                   placeholder="you@example.com"
                 />
@@ -236,7 +247,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
                 </div>
             ) : (
                 <div>
-                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 ml-1">Enter 8-Digit Code</label>
+                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 ml-1">Enter Confirmation Code</label>
                     <div className="relative group">
                         <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 group-focus-within:text-violet-500 dark:group-focus-within:text-violet-400 transition-colors">
                         <KeyRound size={20} />
@@ -247,8 +258,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
                         value={otp}
                         onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, ''))}
                         className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:bg-white dark:focus:bg-slate-800 focus:border-violet-500 dark:focus:border-violet-500 focus:ring-4 focus:ring-violet-100 dark:focus:ring-violet-900/30 outline-none transition-all font-mono text-xl font-bold text-slate-800 dark:text-white tracking-widest placeholder:tracking-normal placeholder:text-slate-300 dark:placeholder:text-slate-600"
-                        placeholder="12345678"
-                        maxLength={8} 
+                        placeholder="123456"
+                        maxLength={10} 
                         />
                     </div>
                 </div>
