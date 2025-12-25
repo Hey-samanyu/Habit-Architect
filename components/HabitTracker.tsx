@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Check, Trash2, Flame, Zap, Trophy, TrendingUp, PartyPopper, Calendar, Clock, Crown, Sparkles, Bell } from 'lucide-react';
 import { Habit, Category, Frequency } from '../types';
@@ -16,154 +17,102 @@ export const HabitTracker: React.FC<HabitTrackerProps> = ({
   onDeleteHabit
 }) => {
   
-  const getCategoryColor = (cat: Category) => {
+  const getCategoryTheme = (cat: Category) => {
     switch(cat) {
-      case Category.HEALTH: return 'text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-900';
-      case Category.WORK: return 'text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900';
-      case Category.LEARNING: return 'text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900';
-      case Category.MINDFULNESS: return 'text-purple-700 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-900';
-      default: return 'text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700';
+      case Category.HEALTH: return { color: 'text-emerald-500', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' };
+      case Category.WORK: return { color: 'text-blue-500', bg: 'bg-blue-500/10', border: 'border-blue-500/20' };
+      case Category.LEARNING: return { color: 'text-amber-500', bg: 'bg-amber-500/10', border: 'border-amber-500/20' };
+      case Category.MINDFULNESS: return { color: 'text-purple-500', bg: 'bg-purple-500/10', border: 'border-purple-500/20' };
+      default: return { color: 'text-slate-500', bg: 'bg-slate-500/10', border: 'border-slate-500/20' };
     }
   };
 
   if (habits.length === 0) {
     return (
-      <div className="text-center py-12 px-4 text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 transition-colors">
-        <div className="w-12 h-12 bg-slate-50 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-3">
-          <Zap size={20} className="text-slate-400 dark:text-slate-500" />
+      <div className="text-center py-20 px-4 glass-card rounded-[2rem] border-dashed">
+        <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-4 animate-pulse">
+          <Zap size={28} className="text-slate-400 dark:text-slate-500" />
         </div>
-        <h3 className="font-medium text-slate-800 dark:text-white mb-1">No habits found</h3>
-        <p className="text-sm text-slate-500 dark:text-slate-400">Select a tab or add a new habit to get started.</p>
+        <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-2">The canvas is empty</h3>
+        <p className="text-slate-500 dark:text-slate-400 max-w-xs mx-auto">Start architecting your routines by adding your first habit.</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-3">
-      {habits.map((habit) => {
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {habits.map((habit, index) => {
         const isCompleted = completedHabitIds.includes(habit.id);
-        const isDaily = habit.frequency === Frequency.DAILY;
+        const theme = getCategoryTheme(habit.category);
         
-        // Logic for Milestone Flourish
-        const isMilestone = isDaily && isCompleted && (habit.streak % 7 === 0 || habit.streak === 30 || habit.streak === 100) && habit.streak > 0;
-
-        // Determine streak styling based on tiered system
-        let streakConfig = {
-          color: "text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700",
-          Icon: TrendingUp,
-          animation: "",
-          label: "Streak"
-        };
-        
-        if (habit.streak >= 30) {
-          streakConfig = {
-            color: "text-white bg-gradient-to-r from-violet-600 to-fuchsia-600 border-violet-200 dark:border-violet-800 shadow-md shadow-violet-200 dark:shadow-none",
-            Icon: Crown,
-            animation: "",
-            label: "Mastery"
-          };
-        } else if (habit.streak >= 14) {
-          streakConfig = {
-            color: "text-white bg-gradient-to-r from-fuchsia-500 to-pink-600 border-fuchsia-200 dark:border-fuchsia-800 shadow-md shadow-fuchsia-200 dark:shadow-none",
-            Icon: Trophy,
-            animation: "animate-bounce",
-            label: "Elite"
-          };
-        } else if (habit.streak >= 7) {
-          streakConfig = {
-            color: "text-white bg-gradient-to-r from-orange-500 to-amber-500 border-orange-200 dark:border-orange-800 shadow-md shadow-orange-200 dark:shadow-none",
-            Icon: Flame,
-            animation: "animate-pulse",
-            label: "On Fire"
-          };
-        } else if (habit.streak >= 3) {
-          streakConfig = {
-            color: "text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/40 border-amber-200 dark:border-amber-800",
-            Icon: Zap,
-            animation: "",
-            label: "Building"
-          };
-        } else if (habit.streak > 0) {
-           streakConfig = {
-            color: "text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/40 border-blue-200 dark:border-blue-800",
-            Icon: Sparkles,
-            animation: "",
-            label: "Start"
-          };
-        }
-
-        // Override icon for the specific moment of a milestone
-        if (isMilestone) {
-            streakConfig.Icon = PartyPopper;
-            streakConfig.color = "text-yellow-900 dark:text-yellow-100 bg-yellow-100 dark:bg-yellow-900/60 border-yellow-300 dark:border-yellow-700 shadow-sm ring-2 ring-yellow-200 dark:ring-yellow-900 ring-offset-1 dark:ring-offset-slate-900";
-            streakConfig.animation = "animate-bounce";
-            streakConfig.label = "Milestone!";
-        }
-
         return (
           <div 
             key={habit.id}
-            className={`group flex items-center justify-between p-4 rounded-2xl border transition-all duration-300 ${
+            style={{ animationDelay: `${index * 50}ms` }}
+            className={`group glass-card p-5 rounded-[1.75rem] transition-all duration-500 flex flex-col justify-between animate-in slide-in-from-bottom-4 fade-in ${
               isCompleted 
-                ? 'bg-slate-50/80 dark:bg-slate-800/50 border-transparent dark:border-transparent shadow-none' 
-                : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-violet-100 dark:hover:border-violet-900 hover:-translate-y-0.5'
+                ? 'opacity-80 scale-[0.98] border-emerald-500/20' 
+                : 'hover:border-violet-500/40 hover:-translate-y-1 hover:shadow-2xl hover:shadow-violet-500/10'
             }`}
           >
-            <div className="flex items-center gap-4 overflow-hidden flex-1">
-              <button
-                onClick={() => onToggleHabit(habit.id)}
-                className={`flex-shrink-0 h-12 w-12 rounded-xl flex items-center justify-center border-2 transition-all duration-500 ${
-                  isCompleted
-                    ? 'bg-violet-600 dark:bg-violet-500 border-violet-600 dark:border-violet-500 text-white rotate-0 shadow-md shadow-violet-200 dark:shadow-none scale-100'
-                    : 'border-slate-300 dark:border-slate-600 text-transparent hover:border-violet-500 dark:hover:border-violet-400 -rotate-6 hover:rotate-0 hover:bg-violet-50 dark:hover:bg-violet-900/30 hover:scale-110'
-                }`}
-              >
-                <Check size={24} strokeWidth={4} className={isCompleted ? 'animate-in zoom-in duration-300' : ''} />
-              </button>
-              
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 mb-1.5">
-                   <h4 className={`font-bold truncate transition-all text-lg ${isCompleted ? 'text-slate-500 dark:text-slate-500 line-through decoration-slate-300 dark:decoration-slate-600 decoration-2' : 'text-slate-900 dark:text-white'}`}>
-                    {habit.title}
-                  </h4>
-                  {habit.reminderTime && !isCompleted && (
-                    <span className="flex items-center gap-1 text-[10px] font-bold text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">
-                      <Bell size={10} className="text-violet-400 dark:text-violet-500" />
-                      {habit.reminderTime}
+            <div className="flex justify-between items-start mb-6">
+              <div className="flex gap-4 min-w-0">
+                <button
+                  onClick={() => onToggleHabit(habit.id)}
+                  className={`relative flex-shrink-0 h-14 w-14 rounded-2xl flex items-center justify-center transition-all duration-500 overflow-hidden ${
+                    isCompleted
+                      ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 rotate-0'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-violet-500 border border-transparent hover:border-violet-500/50 -rotate-3 hover:rotate-0'
+                  }`}
+                >
+                  <div className={`absolute inset-0 bg-gradient-to-br from-white/20 to-transparent transition-opacity ${isCompleted ? 'opacity-100' : 'opacity-0'}`}></div>
+                  <Check size={28} strokeWidth={3} className={`relative z-10 transition-transform duration-500 ${isCompleted ? 'scale-100' : 'scale-0'}`} />
+                  {!isCompleted && <div className="absolute inset-0 flex items-center justify-center font-bold text-xs opacity-0 group-hover:opacity-100 transition-opacity">DONE?</div>}
+                </button>
+                
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h4 className={`font-extrabold text-lg truncate transition-all ${isCompleted ? 'text-slate-400 dark:text-slate-500 line-through' : 'text-slate-900 dark:text-white'}`}>
+                      {habit.title}
+                    </h4>
+                    {habit.streak > 0 && (
+                      <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-500 text-[10px] font-black uppercase tracking-tighter">
+                        <Flame size={10} fill="currentColor" />
+                        {habit.streak}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${theme.bg} ${theme.color} border ${theme.border}`}>
+                      {habit.category}
                     </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                   <span className={`text-[10px] font-bold tracking-wide px-2.5 py-1 rounded-md border uppercase ${getCategoryColor(habit.category)}`}>
-                    {habit.category}
-                  </span>
-                  
-                  {/* Only show streaks for Daily habits */}
-                  {isDaily && habit.streak > 0 && (
-                    <span className={`flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full border transition-all duration-500 ${streakConfig.color}`}>
-                      <streakConfig.Icon size={12} className={streakConfig.animation} fill={habit.streak >= 7 ? "currentColor" : "none"} /> 
-                      <span>{habit.streak} Days</span>
-                    </span>
-                  )}
-
-                  {/* For non-daily habits, show frequency badge */}
-                  {!isDaily && (
-                    <span className="flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full border text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700">
-                        {habit.frequency === Frequency.WEEKLY ? <Calendar size={12} /> : <Clock size={12} />}
-                        {habit.frequency}
-                    </span>
-                  )}
+                    {habit.reminderTime && (
+                       <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 flex items-center gap-1">
+                        <Bell size={10} /> {habit.reminderTime}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
+
+              <button 
+                onClick={() => onDeleteHabit(habit.id)}
+                className="opacity-0 group-hover:opacity-100 p-2 text-slate-400 hover:text-rose-500 transition-all"
+              >
+                <Trash2 size={16} />
+              </button>
             </div>
 
-            <button 
-              onClick={() => onDeleteHabit(habit.id)}
-              className="opacity-0 group-hover:opacity-100 p-2 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-lg transition-all ml-2"
-              title="Delete habit"
-            >
-              <Trash2 size={18} />
-            </button>
+            <div className="flex items-center justify-between mt-auto">
+               <div className="flex -space-x-1">
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className={`w-1.5 h-6 rounded-full border border-white dark:border-slate-900 ${i < (habit.streak % 5 || 5) && habit.streak > 0 ? 'bg-violet-500' : 'bg-slate-200 dark:bg-slate-800'}`}></div>
+                  ))}
+               </div>
+               <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                  {habit.frequency} Routine
+               </div>
+            </div>
           </div>
         );
       })}

@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Chat, Modality, Content } from "@google/genai";
 import { format, subDays } from 'date-fns';
 import { Habit, Goal, DailyLog } from "../types";
@@ -140,8 +141,9 @@ export const generateDailyOverview = async (
   `;
 
   try {
+    // Update to 'gemini-3-flash-preview' for basic text tasks
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3-flash-preview',
       contents: prompt,
       config: {
         thinkingConfig: { thinkingBudget: 0 },
@@ -244,8 +246,9 @@ export const createChatSession = (
     No excuses, let's get it done!"
   `;
 
+  // Update to 'gemini-3-flash-preview' for chat session
   return ai.chats.create({
-    model: 'gemini-2.5-flash',
+    model: 'gemini-3-flash-preview',
     config: {
       systemInstruction,
       temperature: 0.7,
