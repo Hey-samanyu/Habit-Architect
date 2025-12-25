@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Brain, Sparkles, RefreshCw, Lightbulb, Share2 } from 'lucide-react';
 import { generateDailyOverview } from '../services/geminiService';
@@ -26,95 +27,67 @@ export const AIOverview: React.FC<AIOverviewProps> = ({ habits, goals, logs }) =
     const todayLog = logs[todayStr];
     const completedCount = todayLog?.completedHabitIds.length || 0;
     const totalHabits = habits.length;
-    
-    // 1. Build the message header
     let message = `*🚀 Habit Architect Daily Update - ${format(new Date(), 'MMM do')}*\n\n`;
-    
-    // 2. Add Stats
     message += `📊 *Progress:* ${completedCount}/${totalHabits} Habits Done\n`;
-    
-    // 3. Add High Streaks
-    const highStreaks = habits.filter(h => h.streak > 3).map(h => h.title);
-    if (highStreaks.length > 0) {
-        message += `🔥 *On Fire:* ${highStreaks.slice(0, 3).join(', ')}\n`;
-    }
-
-    // 4. Add Goal Progress
     const activeGoal = goals.find(g => g.current < g.target);
     if (activeGoal) {
         const percent = Math.floor((activeGoal.current / activeGoal.target) * 100);
         message += `🎯 *Goal Focus:* ${activeGoal.title} (${percent}%)\n`;
     }
-
-    // 5. Add AI Insight (if generated)
     if (analysis) {
-        // Clean up markdown bolding for WhatsApp (*text*)
         const cleanAnalysis = analysis.replace(/\*\*/g, '*');
         message += `\n🤖 *Kairo's Insight:*\n${cleanAnalysis}`;
-    } else {
-        message += `\nCheck out my progress on Habit Architect!`;
     }
-
-    // 6. Encode and Open
-    const encodedMessage = encodeURIComponent(message);
-    window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
+    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
   };
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-violet-100 dark:border-slate-700 relative overflow-hidden group hover:shadow-md transition-all">
-      <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-violet-50 to-fuchsia-50 dark:from-violet-900/20 dark:to-fuchsia-900/20 rounded-bl-full -mr-16 -mt-16 z-0 pointer-events-none"></div>
+    <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-200 relative overflow-hidden group">
+      <div className="absolute top-0 right-0 w-64 h-64 bg-violet-50 rounded-bl-full -mr-16 -mt-16 z-0 pointer-events-none"></div>
 
       <div className="relative z-10">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
-            <div className="bg-violet-600 p-2 rounded-lg shadow-sm shadow-violet-200 dark:shadow-none">
-              <Brain className="text-white" size={20} />
+            <div className="bg-violet-600 p-2.5 rounded-xl shadow-lg shadow-violet-100">
+              <Brain className="text-white" size={24} />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-800 dark:text-white">AI Coach</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Powered by Gemini</p>
+              <h2 className="text-xl font-black text-slate-900 tracking-tight uppercase">Kairo Insights</h2>
+              <p className="text-xs text-slate-500 font-black uppercase tracking-widest">Architectural Intelligence</p>
             </div>
           </div>
           
-          <div className="flex items-center gap-2">
-             {/* Share Button */}
+          <div className="flex items-center gap-3">
              <button 
                 onClick={handleShareToWhatsApp}
-                className="flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 rounded-xl transition-all border border-emerald-100 dark:border-emerald-900"
+                className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100 hover:bg-emerald-100 transition-all"
                 title="Share to WhatsApp"
               >
-                <Share2 size={16} />
-                <span className="hidden sm:inline text-xs font-bold">Share</span>
+                <Share2 size={20} />
               </button>
 
               <button 
                 onClick={handleGenerate}
                 disabled={loading}
-                className="flex items-center gap-2 px-4 py-2 bg-violet-50 dark:bg-violet-900/30 hover:bg-violet-100 dark:hover:bg-violet-900/50 text-violet-600 dark:text-violet-400 rounded-xl text-sm font-bold transition-all disabled:opacity-50"
+                className="flex items-center gap-2 px-6 py-3 bg-violet-600 text-white rounded-xl text-sm font-black uppercase tracking-widest shadow-lg shadow-violet-200 hover:bg-violet-700 transition-all disabled:opacity-50"
               >
-                {loading ? (
-                  <RefreshCw className="animate-spin" size={16} />
-                ) : (
-                  <Sparkles size={16} />
-                )}
+                {loading ? <RefreshCw className="animate-spin" size={18} /> : <Sparkles size={18} />}
                 {analysis ? "Refresh" : "Insight"}
               </button>
           </div>
         </div>
 
         {analysis ? (
-          <div className="bg-slate-50/80 dark:bg-slate-900/50 rounded-xl p-5 border border-slate-100 dark:border-slate-700 animate-in fade-in duration-500">
-            <div className="prose prose-violet dark:prose-invert prose-sm w-full max-w-none">
-               <p className="whitespace-pre-wrap leading-relaxed text-slate-800 dark:text-slate-200 font-medium">
-                 {analysis}
-               </p>
-            </div>
+          <div className="bg-slate-50 rounded-[1.5rem] p-6 border border-slate-100 animate-in fade-in duration-500">
+            <p className="whitespace-pre-wrap leading-relaxed text-slate-900 font-semibold text-lg">
+              {analysis}
+            </p>
           </div>
         ) : (
-          <div className="bg-slate-50 dark:bg-slate-700/30 rounded-xl p-8 border border-dashed border-slate-200 dark:border-slate-600 text-center">
-            <Lightbulb className="mx-auto text-slate-400 dark:text-slate-500 mb-2" size={24} />
-            <p className="text-slate-600 dark:text-slate-400 text-sm font-medium">
-              Tap the button to analyze your habit patterns and get daily advice.
+          <div className="bg-slate-50 rounded-[1.5rem] p-10 border border-dashed border-slate-300 text-center">
+            <Lightbulb className="mx-auto text-slate-300 mb-3" size={32} />
+            <p className="text-slate-600 font-bold text-base">
+              Initialize Kairo to analyze your structural routines and performance trends.
             </p>
           </div>
         )}
