@@ -361,31 +361,23 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
               lightText={true}
             />
             <FeatureCard 
-              icon={<Compass size={40} className="text-violet-600" />}
-              title="Metric Mapping"
-              desc="Visualize consistency through 3D spatial mapping and adaptive trend forecasting."
-            />
-             <FeatureCard 
-              icon={<Shield size={40} className="text-emerald-600" />}
-              title="Vault Sync"
-              desc="Your progress is secured via Supabase AES-256 military-grade cloud encryption."
-            />
-            <FeatureCard 
+              className="md:col-span-2 border-slate-200"
               icon={<Layers size={40} className="text-amber-500" fill="currentColor" />}
               title="Tiered Streaks"
-              desc="Watch your routines evolve from 'Spark' to 'Mastery' with architectural tiers."
+              desc="Watch your routines evolve from 'Spark' to 'Mastery' with architectural tiers and visual fire-themed tracking."
             />
             <FeatureCard 
               className="md:col-span-2 border-fuchsia-200"
               icon={<Maximize size={40} className="text-fuchsia-600" />}
               title="Complex Stacks"
-              desc="Architect complex habit stacks with triggers, reminders, and cross-metric goals."
+              desc="Architect complex habit stacks with triggers, reminders, and cross-metric goals for maximum structural integrity."
               interactive={true}
             />
              <FeatureCard 
+              className="md:col-span-2 border-emerald-100"
               icon={<Zap size={40} className="text-orange-500" fill="currentColor" />}
               title="Haptic Pulse"
-              desc="Hyper-satisfying visual and physical feedback for every routine completed."
+              desc="Hyper-satisfying visual and physical feedback for every routine completed, making consistency feel rewarding."
             />
           </div>
         </div>
