@@ -18,13 +18,13 @@ import { Modal } from './components/UIComponents';
 
 const getTodayKey = () => format(new Date(), 'yyyy-MM-dd');
 
-// Map URL hash paths to the actual element IDs in the DOM
+// Map clean URL paths to the actual element IDs in the DOM for scrolling
 const PATH_TO_ID: Record<string, string> = {
-  '#/dashboard': 'root',
-  '#/routines': 'habits',
-  '#/milestones': 'goals',
-  '#/insights': 'analytics',
-  '#/trophies': 'achievements'
+  '/dashboard': 'root',
+  '/routines': 'habits',
+  '/milestones': 'goals',
+  '/insights': 'analytics',
+  '/trophies': 'achievements'
 };
 
 export default function App() {
@@ -33,8 +33,8 @@ export default function App() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved');
   
-  // Hash Routing State
-  const [currentHash, setCurrentHash] = useState(window.location.hash || '#/');
+  // Path Routing State
+  const [currentPath, setCurrentPath] = useState(window.location.pathname || '/');
 
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -44,13 +44,14 @@ export default function App() {
     return false;
   });
 
-  // Navigation Helper (Hash-based)
-  const navigateTo = (route: string) => {
-    const hash = route.startsWith('#') ? route : `#${route}`;
-    window.location.hash = hash;
-    setCurrentHash(hash);
+  // Navigation Helper (Path-based)
+  const navigateTo = (path: string) => {
+    // Ensure path starts with /
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    window.history.pushState({}, '', cleanPath);
+    setCurrentPath(cleanPath);
     
-    const sectionId = PATH_TO_ID[hash];
+    const sectionId = PATH_TO_ID[cleanPath];
     if (sectionId) {
       setTimeout(() => {
         const el = document.getElementById(sectionId === 'root' ? 'root-container' : sectionId);
@@ -59,10 +60,18 @@ export default function App() {
     }
   };
 
+  // Handle browser back/forward buttons and hash cleanup
   useEffect(() => {
-    const handleHashChange = () => setCurrentHash(window.location.hash || '#/');
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
+    // If user lands with a hash (old URL format), clean it up
+    if (window.location.hash) {
+      const cleanPath = window.location.hash.replace('#', '') || '/';
+      window.history.replaceState({}, '', cleanPath);
+      setCurrentPath(cleanPath);
+    }
+
+    const handlePopState = () => setCurrentPath(window.location.pathname || '/');
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
   useEffect(() => {
@@ -101,7 +110,7 @@ export default function App() {
             };
             setUser(userData);
             loadUserData(userData.id);
-            if (currentHash === '#/login' || currentHash === '#/') navigateTo('#/dashboard');
+            if (currentPath === '/login' || currentPath === '/') navigateTo('/dashboard');
         } else { setIsLoaded(true); }
     });
 
@@ -114,12 +123,12 @@ export default function App() {
             };
             setUser(userData);
             loadUserData(userData.id);
-            if (currentHash === '#/login' || currentHash === '#/') navigateTo('#/dashboard');
+            if (currentPath === '/login' || currentPath === '/') navigateTo('/dashboard');
         } else {
             setUser(null);
             setState({ habits: [], goals: [], logs: {}, earnedBadges: [] });
             setIsLoaded(true);
-            if (currentHash !== '#/') navigateTo('#/');
+            if (currentPath !== '/') navigateTo('/');
         }
     });
     return () => subscription.unsubscribe();
@@ -217,9 +226,9 @@ export default function App() {
     </div>
   );
 
-  // Router Logic using Hash
-  if (!user && currentHash === '#/login') return <AuthScreen onAuthSuccess={() => navigateTo('#/dashboard')} />;
-  if (!user) return <LandingPage onStart={() => navigateTo('#/login')} />;
+  // Router Logic using Path
+  if (!user && currentPath === '/login') return <AuthScreen onAuthSuccess={() => navigateTo('/dashboard')} />;
+  if (!user) return <LandingPage onStart={() => navigateTo('/login')} />;
 
   const todayKey = getTodayKey();
   const todayLog = state.logs[todayKey] || { date: todayKey, completedHabitIds: [], goalProgress: {} };
@@ -231,7 +240,7 @@ export default function App() {
       {/* Sidebar */}
       <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transform transition-transform duration-500 ease-out lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex flex-col h-full p-8">
-          <div className="flex items-center gap-4 mb-12 cursor-pointer" onClick={() => navigateTo('#/')}>
+          <div className="flex items-center gap-4 mb-12 cursor-pointer" onClick={() => navigateTo('/')}>
             <div className="bg-violet-600 p-3 rounded-2xl shadow-xl shadow-violet-200 dark:shadow-none">
               <Layout className="text-white" size={24} />
             </div>
@@ -242,17 +251,17 @@ export default function App() {
 
           <nav className="space-y-3 flex-1">
             {[
-              { id: 'dashboard', path: '#/dashboard', icon: Home, label: 'Vision' },
-              { id: 'habits', path: '#/routines', icon: ListChecks, label: 'Routines' },
-              { id: 'goals', path: '#/milestones', icon: Target, label: 'Milestones' },
-              { id: 'analytics', path: '#/insights', icon: PieChart, label: 'Insights' },
-              { id: 'achievements', path: '#/trophies', icon: Medal, label: 'Trophies' },
+              { id: 'dashboard', path: '/dashboard', icon: Home, label: 'Vision' },
+              { id: 'habits', path: '/routines', icon: ListChecks, label: 'Routines' },
+              { id: 'goals', path: '/milestones', icon: Target, label: 'Milestones' },
+              { id: 'analytics', path: '/insights', icon: PieChart, label: 'Insights' },
+              { id: 'achievements', path: '/trophies', icon: Medal, label: 'Trophies' },
             ].map(item => (
               <button 
                 key={item.id}
                 onClick={() => { navigateTo(item.path); setSidebarOpen(false); }} 
                 className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl font-bold transition-all text-left ${
-                  currentHash === item.path
+                  currentPath === item.path
                     ? 'bg-violet-600 text-white shadow-xl shadow-violet-200 dark:shadow-none scale-[1.02]' 
                     : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
                 }`}
