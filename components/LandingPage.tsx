@@ -152,17 +152,30 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
 
                 <div 
                   onClick={triggerHeroConfetti}
-                  className={`cursor-pointer p-8 rounded-[2rem] transition-all duration-500 border-2 shadow-sm ${
+                  className={`cursor-pointer p-8 rounded-[2rem] transition-all duration-500 border-2 shadow-sm group/card ${
                     isHabitTicked 
                       ? 'bg-emerald-50 border-emerald-500/40 translate-y-2' 
                       : 'bg-slate-50 border-slate-100 hover:border-violet-500/40 hover:shadow-xl'
                   }`}
                 >
                   <div className="flex items-center gap-5">
-                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-500 shadow-inner ${
-                      isHabitTicked ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-400 rotate-[-10deg]'
+                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-500 border-2 relative shadow-inner ${
+                      isHabitTicked 
+                        ? 'bg-emerald-500 border-emerald-400 text-white' 
+                        : 'bg-white dark:bg-slate-800 border-slate-200 text-slate-400 rotate-[-5deg]'
                     }`}>
-                      <Check size={32} strokeWidth={4} className={isHabitTicked ? 'scale-100' : 'scale-0 transition-transform'} />
+                      <Check 
+                        size={32} 
+                        strokeWidth={4} 
+                        className={`transition-all duration-500 ${isHabitTicked ? 'scale-100 opacity-100' : 'scale-50 opacity-0'}`} 
+                      />
+                      {!isHabitTicked && (
+                        <Check 
+                          size={32} 
+                          strokeWidth={4} 
+                          className="absolute opacity-0 group-hover/card:opacity-20 transition-opacity text-violet-600" 
+                        />
+                      )}
                     </div>
                     <div>
                       <h5 className={`font-black text-xl mb-1 ${isHabitTicked ? 'text-slate-400 line-through' : 'text-slate-900'}`}>Deep Meditation</h5>
@@ -271,8 +284,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
                          <div className="space-y-3">
                             {[1,2,3].map(i => (
                               <div key={i} className={`p-5 rounded-2xl border flex items-center gap-4 ${i === 2 ? 'bg-emerald-50 border-emerald-500/30' : 'bg-white border-slate-100'}`}>
-                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${i === 2 ? 'bg-emerald-500 text-white' : 'bg-slate-100'}`}>
-                                  {i === 2 && <Check size={20} strokeWidth={3} />}
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center border-2 ${i === 2 ? 'bg-emerald-500 border-emerald-400 text-white' : 'bg-white border-slate-200'}`}>
+                                  {i === 2 && <Check size={20} strokeWidth={4} />}
                                 </div>
                                 <div className={`h-4 bg-slate-200 rounded ${i === 1 ? 'w-32' : i === 2 ? 'w-48 opacity-40 line-through' : 'w-24'}`}></div>
                               </div>

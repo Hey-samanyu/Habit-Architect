@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Check, Trash2, Flame, Zap, Bell } from 'lucide-react';
+import { Check, Trash2, Flame, Zap, Bell, Plus } from 'lucide-react';
 import { Habit, Category } from '../types';
 
 interface HabitTrackerProps {
@@ -59,13 +59,30 @@ export const HabitTracker: React.FC<HabitTrackerProps> = ({
               <div className="flex gap-4 min-w-0">
                 <button
                   onClick={() => onToggleHabit(habit.id)}
-                  className={`flex-shrink-0 h-14 w-14 rounded-2xl flex items-center justify-center transition-all duration-500 ${
+                  aria-label={isCompleted ? "Mark habit as incomplete" : "Mark habit as complete"}
+                  className={`flex-shrink-0 h-14 w-14 rounded-2xl flex items-center justify-center transition-all duration-500 border-2 relative group/btn ${
                     isCompleted
-                      ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-200 dark:shadow-none'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border border-transparent hover:border-violet-300 dark:hover:border-violet-700'
+                      ? 'bg-emerald-500 border-emerald-400 text-white shadow-lg shadow-emerald-200 dark:shadow-none'
+                      : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 hover:border-violet-400 dark:hover:border-violet-500'
                   }`}
                 >
-                  <Check size={28} strokeWidth={3} className={`transition-transform duration-500 ${isCompleted ? 'scale-100' : 'scale-0'}`} />
+                  {/* The visible checkmark when completed */}
+                  <Check 
+                    size={28} 
+                    strokeWidth={4} 
+                    className={`transition-all duration-500 ${isCompleted ? 'scale-100 opacity-100' : 'scale-50 opacity-0'}`} 
+                  />
+                  
+                  {/* The "ghost" checkmark on hover when uncompleted */}
+                  {!isCompleted && (
+                    <Check 
+                      size={28} 
+                      strokeWidth={4} 
+                      className="absolute opacity-0 group-hover/btn:opacity-20 transition-opacity text-violet-600 dark:text-violet-400" 
+                    />
+                  )}
+
+                  {/* Accessible "indicator" for empty state if needed, but the border usually suffices */}
                 </button>
                 
                 <div className="min-w-0">
@@ -82,7 +99,7 @@ export const HabitTracker: React.FC<HabitTrackerProps> = ({
                   </div>
                   <div className="flex items-center gap-2">
                     <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${theme.bg} ${theme.color} border ${theme.border}`}>
-                      {habit.category}
+                      {theme.color ? habit.category : Category.OTHER}
                     </span>
                     {habit.reminderTime && (
                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 flex items-center gap-1">
