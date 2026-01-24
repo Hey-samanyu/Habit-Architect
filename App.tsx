@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
-import { Plus, Calendar, Layout, BarChart3, CheckCircle2, Target, Menu, X, Home, ListChecks, PieChart, Activity, RotateCcw, Bell, LogOut, Medal, Sparkles as SparklesIcon } from 'lucide-react';
+import { Plus, Calendar, Layout, BarChart3, CheckCircle2, Target, Menu, X, Home, ListChecks, PieChart, Activity, RotateCcw, Bell, LogOut, Medal, Sparkles as SparklesIcon, Moon, Sun } from 'lucide-react';
 import { format } from 'date-fns';
 import { supabase, isSupabaseConfigured } from './services/supabaseClient';
 
@@ -24,6 +24,23 @@ export default function App() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved');
   const [showAuth, setShowAuth] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('theme') === 'dark' || 
+             (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [isDarkMode]);
 
   const triggerConfetti = (isBig = false) => {
     // @ts-ignore
@@ -166,7 +183,7 @@ export default function App() {
   };
 
   if (!isLoaded) return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
         <div className="w-16 h-16 border-4 border-violet-200 border-t-violet-600 rounded-full animate-spin"></div>
     </div>
   );
@@ -179,16 +196,16 @@ export default function App() {
   const percentage = state.habits.length > 0 ? Math.round((todayLog.completedHabitIds.length / state.habits.length) * 100) : 0;
 
   return (
-    <div className="flex h-screen overflow-hidden font-sans bg-slate-50">
+    <div className="flex h-screen overflow-hidden font-sans bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
       
       {/* Sidebar */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-slate-200 transform transition-transform duration-500 ease-out lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transform transition-transform duration-500 ease-out lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex flex-col h-full p-8">
           <div className="flex items-center gap-4 mb-12">
-            <div className="bg-violet-600 p-3 rounded-2xl shadow-xl shadow-violet-200">
+            <div className="bg-violet-600 p-3 rounded-2xl shadow-xl shadow-violet-200 dark:shadow-none">
               <Layout className="text-white" size={24} />
             </div>
-            <h1 className="text-2xl font-black tracking-tight text-slate-900">
+            <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
               Habit<span className="text-violet-500">Arch.</span>
             </h1>
           </div>
@@ -206,8 +223,8 @@ export default function App() {
                 onClick={() => scrollToSection(item.id)} 
                 className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl font-bold transition-all text-left ${
                   activeSection === item.id
-                    ? 'bg-violet-600 text-white shadow-xl shadow-violet-200 scale-[1.02]' 
-                    : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
+                    ? 'bg-violet-600 text-white shadow-xl shadow-violet-200 dark:shadow-none scale-[1.02]' 
+                    : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
                 <item.icon size={20} strokeWidth={2.5} />
@@ -216,7 +233,7 @@ export default function App() {
             ))}
           </nav>
 
-          <div className="mt-auto pt-8 border-t border-slate-200 space-y-4">
+          <div className="mt-auto pt-8 border-t border-slate-200 dark:border-slate-800 space-y-4">
               <button onClick={() => supabase?.auth.signOut()} className="flex items-center gap-4 px-5 py-3 text-slate-400 hover:text-rose-600 transition-colors text-sm font-bold w-full">
                   <LogOut size={18} /> Sign Out
               </button>
@@ -226,33 +243,45 @@ export default function App() {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative">
-        <header className="h-20 flex items-center justify-between px-8 lg:px-12 z-10 shrink-0 bg-white/50 backdrop-blur-md border-b border-slate-200">
-            <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-3 bg-white rounded-xl shadow-lg">
-                <Menu size={24} />
-            </button>
-            <div className="hidden lg:flex items-center gap-4 text-slate-400 font-bold text-xs uppercase tracking-[0.2em]">
-                <Calendar size={14} />
-                <span>{format(new Date(), 'EEEE, MMMM do')}</span>
-            </div>
+        <header className="h-20 flex items-center justify-between px-8 lg:px-12 z-10 shrink-0 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors duration-300">
             <div className="flex items-center gap-4">
-                <div className="flex items-center gap-4 bg-white px-4 py-2 rounded-2xl border border-slate-200">
-                    <span className="font-bold text-sm text-slate-700">{user.name}</span>
-                    <div className="w-10 h-10 bg-violet-600 rounded-xl flex items-center justify-center text-white font-black shadow-lg">
+              <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-3 bg-white dark:bg-slate-800 rounded-xl shadow-lg dark:shadow-none border border-slate-200 dark:border-slate-700">
+                  <Menu size={24} className="text-slate-900 dark:text-white" />
+              </button>
+              <div className="hidden lg:flex items-center gap-4 text-slate-400 dark:text-slate-500 font-bold text-xs uppercase tracking-[0.2em]">
+                  <Calendar size={14} />
+                  <span>{format(new Date(), 'EEEE, MMMM do')}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4">
+                {/* Theme Toggle */}
+                <button 
+                  onClick={() => setIsDarkMode(!isDarkMode)}
+                  className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-violet-600 dark:hover:text-violet-400 transition-all hover:scale-105"
+                  title={isDarkMode ? 'Switch to Light' : 'Switch to Dark'}
+                >
+                  {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+                </button>
+
+                <div className="flex items-center gap-4 bg-white dark:bg-slate-800 px-4 py-2 rounded-2xl border border-slate-200 dark:border-slate-700">
+                    <span className="font-bold text-sm text-slate-700 dark:text-slate-200 hidden sm:block">{user.name}</span>
+                    <div className="w-10 h-10 bg-violet-600 rounded-xl flex items-center justify-center text-white font-black shadow-lg dark:shadow-none">
                         {user.name[0]}
                     </div>
                 </div>
             </div>
         </header>
 
-        <main ref={mainRef} className="flex-1 overflow-y-auto p-8 lg:p-12 scroll-smooth">
+        <main ref={mainRef} className="flex-1 overflow-y-auto p-8 lg:p-12 scroll-smooth blueprint-grid">
             <div className="max-w-6xl mx-auto space-y-12">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
                     <div>
-                        <h2 className="text-5xl font-black text-slate-900 tracking-tight leading-tight">
-                          Success starts <br/>with <span className="text-violet-600">consistency.</span>
+                        <h2 className="text-5xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
+                          Success starts <br/>with <span className="text-violet-600 dark:text-violet-500">consistency.</span>
                         </h2>
                     </div>
-                    <button onClick={() => setHabitModalOpen(true)} className="flex items-center gap-3 bg-slate-900 text-white px-8 py-4 rounded-[1.5rem] font-black shadow-2xl transition-all hover:scale-105 active:scale-95">
+                    <button onClick={() => setHabitModalOpen(true)} className="flex items-center gap-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-8 py-4 rounded-[1.5rem] font-black shadow-2xl dark:shadow-none transition-all hover:scale-105 active:scale-95">
                         <Plus size={20} /> Create Routine
                     </button>
                 </div>
@@ -269,19 +298,19 @@ export default function App() {
                         
                         <section id="habits" className="scroll-mt-28">
                              <div className="flex items-center justify-between mb-8">
-                                <h3 className="text-2xl font-black text-slate-900 flex items-center gap-3">
-                                  <div className="p-2 bg-violet-500/10 rounded-xl text-violet-500"><ListChecks size={24}/></div>
+                                <h3 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-3">
+                                  <div className="p-2 bg-violet-500/10 dark:bg-violet-400/10 rounded-xl text-violet-500 dark:text-violet-400"><ListChecks size={24}/></div>
                                   Today's Blueprint
                                 </h3>
-                                <div className="flex p-1 bg-white border border-slate-200 rounded-2xl">
+                                <div className="flex p-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl">
                                     {[Frequency.DAILY, Frequency.WEEKLY, Frequency.MONTHLY].map((tab) => (
                                     <button
                                         key={tab}
                                         onClick={() => setCurrentHabitTab(tab)}
                                         className={`px-5 py-2 text-xs font-black rounded-xl transition-all uppercase tracking-widest ${
                                         currentHabitTab === tab 
-                                        ? 'bg-violet-600 text-white shadow-lg shadow-violet-200' 
-                                        : 'text-slate-400 hover:text-slate-600'
+                                        ? 'bg-violet-600 text-white shadow-lg shadow-violet-200 dark:shadow-none' 
+                                        : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
                                         }`}
                                     >
                                         {tab}
@@ -299,8 +328,8 @@ export default function App() {
 
                     <div className="xl:col-span-4 space-y-10">
                         <section id="goals" className="scroll-mt-28">
-                            <h3 className="text-2xl font-black text-slate-900 mb-8 flex items-center gap-3">
-                               <div className="p-2 bg-indigo-500/10 rounded-xl text-indigo-500"><Target size={24}/></div>
+                            <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-8 flex items-center gap-3">
+                               <div className="p-2 bg-indigo-500/10 dark:bg-indigo-400/10 rounded-xl text-indigo-500 dark:text-indigo-400"><Target size={24}/></div>
                                North Stars
                             </h3>
                             <GoalTracker goals={state.goals} onUpdateProgress={updateGoalProgress} onDeleteGoal={(id) => setState(prev => ({...prev, goals: prev.goals.filter(g => g.id !== id)}))} />
@@ -317,16 +346,16 @@ export default function App() {
 
       <Modal isOpen={isHabitModalOpen} onClose={() => setHabitModalOpen(false)} title="New System">
           <div className="space-y-6">
-              <input value={newHabitTitle} onChange={e => setNewHabitTitle(e.target.value)} placeholder="Habit Name..." className="w-full bg-slate-50 p-4 rounded-2xl outline-none font-bold text-lg border-2 border-transparent focus:border-violet-600 transition-all text-slate-900"/>
+              <input value={newHabitTitle} onChange={e => setNewHabitTitle(e.target.value)} placeholder="Habit Name..." className="w-full bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl outline-none font-bold text-lg border-2 border-transparent focus:border-violet-600 transition-all text-slate-900 dark:text-white"/>
               <div className="grid grid-cols-2 gap-4">
-                  <select value={newHabitCategory} onChange={e => setNewHabitCategory(e.target.value as Category)} className="bg-slate-50 p-4 rounded-2xl font-bold text-sm outline-none text-slate-900">
-                      {Object.values(Category).map(c => <option key={c} value={c}>{c}</option>)}
+                  <select value={newHabitCategory} onChange={e => setNewHabitCategory(e.target.value as Category)} className="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl font-bold text-sm outline-none text-slate-900 dark:text-white border border-transparent focus:border-violet-600">
+                      {Object.values(Category).map(c => <option key={c} value={c} className="bg-white dark:bg-slate-800">{c}</option>)}
                   </select>
-                  <select value={newHabitFrequency} onChange={e => setNewHabitFrequency(e.target.value as Frequency)} className="bg-slate-50 p-4 rounded-2xl font-bold text-sm outline-none text-slate-900">
-                      {Object.values(Frequency).filter(f => f !== Frequency.ONCE).map(f => <option key={f} value={f}>{f}</option>)}
+                  <select value={newHabitFrequency} onChange={e => setNewHabitFrequency(e.target.value as Frequency)} className="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl font-bold text-sm outline-none text-slate-900 dark:text-white border border-transparent focus:border-violet-600">
+                      {Object.values(Frequency).filter(f => f !== Frequency.ONCE).map(f => <option key={f} value={f} className="bg-white dark:bg-slate-800">{f}</option>)}
                   </select>
               </div>
-              <button onClick={addHabit} className="w-full bg-violet-600 text-white p-5 rounded-2xl font-black shadow-xl hover:bg-violet-700 transition-all">ESTABLISH SYSTEM</button>
+              <button onClick={addHabit} className="w-full bg-violet-600 text-white p-5 rounded-2xl font-black shadow-xl hover:bg-violet-700 transition-all uppercase tracking-widest">ESTABLISH SYSTEM</button>
           </div>
       </Modal>
     </div>
@@ -334,14 +363,14 @@ export default function App() {
 }
 
 const MetricCard = ({ icon, title, value, progress, color }: any) => (
-  <div className="bg-white p-8 rounded-[2rem] flex flex-col gap-4 border border-slate-200 shadow-sm">
+  <div className="bg-white dark:bg-slate-900 p-8 rounded-[2rem] flex flex-col gap-4 border border-slate-200 dark:border-slate-800 shadow-sm transition-colors duration-300">
       <div className="flex items-center justify-between">
           {icon}
-          <span className="text-4xl font-black text-slate-900">{value}</span>
+          <span className="text-4xl font-black text-slate-900 dark:text-white">{value}</span>
       </div>
-      <p className="text-xs font-black uppercase tracking-widest text-slate-400">{title}</p>
+      <p className="text-xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">{title}</p>
       {progress !== undefined && (
-          <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+          <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden border border-slate-200 dark:border-slate-700">
               <div className={`${color} h-full transition-all duration-1000`} style={{ width: `${progress}%` }}></div>
           </div>
       )}
