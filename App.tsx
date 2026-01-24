@@ -18,6 +18,15 @@ import { Modal } from './components/UIComponents';
 
 const getTodayKey = () => format(new Date(), 'yyyy-MM-dd');
 
+// Map URL hash paths to the actual element IDs in the DOM
+const PATH_TO_ID: Record<string, string> = {
+  '#/dashboard': 'root',
+  '#/routines': 'habits',
+  '#/milestones': 'goals',
+  '#/insights': 'analytics',
+  '#/trophies': 'achievements'
+};
+
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [state, setState] = useState<AppState>({ habits: [], goals: [], logs: {}, earnedBadges: [] });
@@ -41,12 +50,12 @@ export default function App() {
     window.location.hash = hash;
     setCurrentHash(hash);
     
-    const sectionId = hash.replace('#/', '');
-    if (['dashboard', 'habits', 'goals', 'analytics', 'achievements'].includes(sectionId)) {
+    const sectionId = PATH_TO_ID[hash];
+    if (sectionId) {
       setTimeout(() => {
-        const el = document.getElementById(sectionId === 'dashboard' ? 'root' : sectionId);
+        const el = document.getElementById(sectionId === 'root' ? 'root-container' : sectionId);
         if (el) el.scrollIntoView({ behavior: 'smooth' });
-      }, 150);
+      }, 100);
     }
   };
 
@@ -217,7 +226,7 @@ export default function App() {
   const percentage = state.habits.length > 0 ? Math.round((todayLog.completedHabitIds.length / state.habits.length) * 100) : 0;
 
   return (
-    <div className="flex h-screen overflow-hidden font-sans bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
+    <div id="root-container" className="flex h-screen overflow-hidden font-sans bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
       
       {/* Sidebar */}
       <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transform transition-transform duration-500 ease-out lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
@@ -357,7 +366,7 @@ export default function App() {
                     </div>
                 </div>
 
-                {/* Achievements moved to the bottom */}
+                {/* Achievements section */}
                 <section id="achievements" className="scroll-mt-28 mt-20">
                      <div className="flex items-center justify-between mb-8">
                         <h3 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-3">
