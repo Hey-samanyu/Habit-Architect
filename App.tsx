@@ -37,12 +37,10 @@ export default function App() {
 
   // Navigation Helper (Hash-based)
   const navigateTo = (route: string) => {
-    // Ensure the route starts with #/
     const hash = route.startsWith('#') ? route : `#${route}`;
     window.location.hash = hash;
     setCurrentHash(hash);
     
-    // Handle scrolling for sub-sections in dashboard
     const sectionId = hash.replace('#/', '');
     if (['dashboard', 'habits', 'goals', 'analytics', 'achievements'].includes(sectionId)) {
       setTimeout(() => {
@@ -296,7 +294,7 @@ export default function App() {
         </header>
 
         <main ref={mainRef} className="flex-1 overflow-y-auto p-8 lg:p-12 scroll-smooth blueprint-grid">
-            <div className="max-w-6xl mx-auto space-y-12">
+            <div className="max-w-6xl mx-auto space-y-12 pb-20">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
                     <div>
                         <h2 className="text-5xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
@@ -356,16 +354,22 @@ export default function App() {
                             </h3>
                             <GoalTracker goals={state.goals} onUpdateProgress={updateGoalProgress} onDeleteGoal={(id) => setState(prev => ({...prev, goals: prev.goals.filter(g => g.id !== id)}))} />
                         </section>
-
-                        <section id="achievements" className="scroll-mt-28">
-                             <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-8 flex items-center gap-3">
-                               <div className="p-2 bg-amber-500/10 dark:bg-amber-400/10 rounded-xl text-amber-500 dark:text-amber-400"><Medal size={24}/></div>
-                               Architect Badges
-                            </h3>
-                            <Suspense fallback={null}><Achievements earnedBadgeIds={state.earnedBadges} /></Suspense>
-                        </section>
                     </div>
                 </div>
+
+                {/* Achievements moved to the bottom */}
+                <section id="achievements" className="scroll-mt-28 mt-20">
+                     <div className="flex items-center justify-between mb-8">
+                        <h3 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-3">
+                           <div className="p-2 bg-amber-500/10 dark:bg-amber-400/10 rounded-xl text-amber-500 dark:text-amber-400"><Medal size={24}/></div>
+                           Architect Badges
+                        </h3>
+                        <div className="text-xs font-black text-slate-400 uppercase tracking-widest bg-white dark:bg-slate-800 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700">
+                          {state.earnedBadges.length} / 8 Unlocked
+                        </div>
+                     </div>
+                    <Suspense fallback={null}><Achievements earnedBadgeIds={state.earnedBadges} /></Suspense>
+                </section>
             </div>
         </main>
       </div>

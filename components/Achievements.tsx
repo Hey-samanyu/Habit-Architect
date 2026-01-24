@@ -1,7 +1,7 @@
+
 import React from 'react';
 import { Trophy, Flame, Target, Zap, Crown, Star, Lock, CheckCircle2, Rocket, Shield } from 'lucide-react';
 import { Badge } from '../types';
-import { Card } from './UIComponents';
 
 export const BADGES_LIST: Badge[] = [
   {
@@ -9,7 +9,7 @@ export const BADGES_LIST: Badge[] = [
     title: 'First Step',
     description: 'Created your first habit',
     icon: 'Star',
-    color: 'bg-blue-500',
+    color: 'from-blue-400 to-blue-600',
     condition: 'Create 1 habit'
   },
   {
@@ -17,7 +17,7 @@ export const BADGES_LIST: Badge[] = [
     title: 'Momentum',
     description: 'Reached a 3-day streak',
     icon: 'Zap',
-    color: 'bg-amber-500',
+    color: 'from-amber-400 to-amber-600',
     condition: '3 day streak'
   },
   {
@@ -25,7 +25,7 @@ export const BADGES_LIST: Badge[] = [
     title: 'On Fire',
     description: 'Reached a 7-day streak',
     icon: 'Flame',
-    color: 'bg-orange-500',
+    color: 'from-orange-400 to-orange-600',
     condition: '7 day streak'
   },
   {
@@ -33,7 +33,7 @@ export const BADGES_LIST: Badge[] = [
     title: 'Habit Master',
     description: 'Reached a 30-day streak',
     icon: 'Crown',
-    color: 'bg-purple-500',
+    color: 'from-purple-400 to-purple-600',
     condition: '30 day streak'
   },
   {
@@ -41,7 +41,7 @@ export const BADGES_LIST: Badge[] = [
     title: 'Goal Getter',
     description: 'Completed your first goal',
     icon: 'Target',
-    color: 'bg-emerald-500',
+    color: 'from-emerald-400 to-emerald-600',
     condition: 'Complete 1 goal'
   },
   {
@@ -49,7 +49,7 @@ export const BADGES_LIST: Badge[] = [
     title: 'Consistent',
     description: 'Completed 50 total habits',
     icon: 'CheckCircle2',
-    color: 'bg-indigo-500',
+    color: 'from-indigo-400 to-indigo-600',
     condition: '50 total logs'
   },
   {
@@ -57,7 +57,7 @@ export const BADGES_LIST: Badge[] = [
     title: 'The Architect',
     description: 'Have 5 active habits',
     icon: 'Shield',
-    color: 'bg-rose-500',
+    color: 'from-rose-400 to-rose-600',
     condition: '5 active habits'
   },
   {
@@ -65,7 +65,7 @@ export const BADGES_LIST: Badge[] = [
     title: 'High Flyer',
     description: 'Hit 100% completion today',
     icon: 'Rocket',
-    color: 'bg-pink-500',
+    color: 'from-pink-400 to-pink-600',
     condition: 'Complete all daily habits'
   }
 ];
@@ -90,65 +90,58 @@ export const Achievements: React.FC<AchievementsProps> = ({ earnedBadgeIds }) =>
     }
   };
 
-  const earnedCount = earnedBadgeIds.length;
-  const progress = Math.round((earnedCount / BADGES_LIST.length) * 100);
-
   return (
-    <div className="space-y-6">
-      <Card className="bg-gradient-to-r from-violet-600 to-indigo-600 dark:from-violet-800 dark:to-indigo-800 text-white border-none">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-xl font-bold">Your Trophy Case</h3>
-            <p className="text-violet-100 text-sm">Collect badges by staying consistent.</p>
-          </div>
-          <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
-            <Trophy size={24} className="text-yellow-300" />
-          </div>
-        </div>
-        <div className="space-y-2">
-          <div className="flex justify-between text-xs font-bold uppercase tracking-wider text-violet-200">
-            <span>Progress</span>
-            <span>{earnedCount} / {BADGES_LIST.length} Badges</span>
-          </div>
-          <div className="h-2 w-full bg-black/20 rounded-full overflow-hidden">
-            <div className="h-full bg-yellow-400 transition-all duration-1000" style={{ width: `${progress}%` }}></div>
-          </div>
-        </div>
-      </Card>
+    <div className="flex gap-4 overflow-x-auto pb-6 -mx-2 px-2 no-scrollbar">
+      {BADGES_LIST.map((badge) => {
+        const isUnlocked = earnedBadgeIds.includes(badge.id);
+        
+        return (
+          <div 
+            key={badge.id}
+            className={`flex-shrink-0 w-[160px] h-[340px] relative rounded-[2rem] flex flex-col items-center justify-start p-6 text-center transition-all duration-500 group ${
+              isUnlocked 
+                ? 'bg-slate-900/40 dark:bg-slate-800/40 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 shadow-2xl scale-100' 
+                : 'bg-slate-100/30 dark:bg-slate-900/30 border border-slate-200/20 dark:border-slate-800/20 opacity-40'
+            }`}
+          >
+            {/* Top Shine Effect */}
+            <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-white/10 to-transparent rounded-t-[2rem] pointer-events-none"></div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {BADGES_LIST.map((badge) => {
-          const isUnlocked = earnedBadgeIds.includes(badge.id);
-          
-          return (
-            <div 
-              key={badge.id}
-              className={`relative overflow-hidden rounded-2xl p-5 border transition-all duration-300 group ${
-                isUnlocked 
-                  ? 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:-translate-y-1' 
-                  : 'bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-800 opacity-70'
-              }`}
-            >
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-transform duration-500 group-hover:scale-110 ${
-                isUnlocked ? `${badge.color} text-white shadow-lg` : 'bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500'
-              }`}>
-                {isUnlocked ? getIcon(badge.icon, 24) : <Lock size={20} />}
-              </div>
-              
-              <h4 className={`font-bold mb-1 ${isUnlocked ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>
-                {badge.title}
+            {/* Icon Container */}
+            <div className={`relative z-10 w-16 h-16 rounded-2xl mb-8 flex items-center justify-center transition-all duration-700 shadow-xl ${
+              isUnlocked 
+                ? `bg-gradient-to-br ${badge.color} text-white ring-4 ring-white/10 group-hover:rotate-12 group-hover:scale-110` 
+                : 'bg-slate-200/50 dark:bg-slate-700/50 text-slate-400 dark:text-slate-500'
+            }`}>
+              {isUnlocked ? getIcon(badge.icon, 28) : <Lock size={24} />}
+            </div>
+            
+            {/* Text Content */}
+            <div className="relative z-10 mt-2 space-y-3">
+              <h4 className={`text-xl font-black leading-tight tracking-tight uppercase ${isUnlocked ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>
+                {badge.title.split(' ').map((word, i) => (
+                  <span key={i} className="block">{word}</span>
+                ))}
               </h4>
-              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              <p className={`text-xs font-bold leading-relaxed px-1 ${isUnlocked ? 'text-slate-500 dark:text-slate-400' : 'text-slate-400 dark:text-slate-600'}`}>
                 {badge.description}
               </p>
-
-              {isUnlocked && (
-                <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-white/20 to-white/0 rounded-bl-full z-10 pointer-events-none"></div>
-              )}
             </div>
-          );
-        })}
-      </div>
+
+            {/* Locked Overlay/Badge logic */}
+            {!isUnlocked && (
+              <div className="mt-auto mb-2 text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-600">
+                Locked
+              </div>
+            )}
+            
+            {/* Background Accent glow for unlocked */}
+            {isUnlocked && (
+              <div className={`absolute -bottom-10 left-1/2 -translate-x-1/2 w-20 h-20 blur-[40px] opacity-20 bg-gradient-to-t ${badge.color}`}></div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 };
