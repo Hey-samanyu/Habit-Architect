@@ -1,18 +1,47 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+/* Import Plus icon for use in interactive demo section */
 import { 
   Layout, Sparkles, Brain, ArrowRight, Zap, Shield, Trophy, 
   ChevronRight, Check, MousePointer2, Layers, 
-  Fingerprint, Compass, Maximize
+  Fingerprint, Compass, Maximize, ChevronLeft, ListChecks, Target, Plus
 } from 'lucide-react';
 
 interface LandingPageProps {
   onStart: () => void;
 }
 
+const FLOW_STEPS = [
+  {
+    id: 'design',
+    title: 'Phase 01: System Design',
+    subtitle: 'Blueprint your routines',
+    description: 'Define your daily systems with architectural precision. Categorize by health, work, or mindfulness to build a balanced structural foundation.',
+    icon: <ListChecks className="text-violet-600" size={32} />,
+    color: 'bg-violet-600'
+  },
+  {
+    id: 'execute',
+    title: 'Phase 02: Structural Execution',
+    subtitle: 'Construct your consistency',
+    description: 'Execute your plan with hyper-satisfying haptic feedback. Watch your integrity bars fill as you solidify your behavioral framework.',
+    icon: <Zap className="text-emerald-600" size={32} fill="currentColor" />,
+    color: 'bg-emerald-600'
+  },
+  {
+    id: 'refine',
+    title: 'Phase 03: Neural Refinement',
+    subtitle: 'Optimize for performance',
+    description: 'Let Kairo, your AI architectural auditor, analyze your data. Receive deep insights to patch structural weaknesses and scale your successes.',
+    icon: <Brain className="text-indigo-600" size={32} fill="currentColor" />,
+    color: 'bg-indigo-600'
+  }
+];
+
 export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [isHabitTicked, setIsHabitTicked] = useState(false);
+  const [activeStep, setActiveStep] = useState(0);
   const heroRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -36,6 +65,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
       });
     }
   };
+
+  const nextStep = () => setActiveStep((prev) => (prev + 1) % FLOW_STEPS.length);
+  const prevStep = () => setActiveStep((prev) => (prev - 1 + FLOW_STEPS.length) % FLOW_STEPS.length);
 
   return (
     <div className="relative font-sans bg-slate-50 blueprint-grid selection:bg-violet-200">
@@ -62,7 +94,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
 
       {/* Hero Section */}
       <section ref={heroRef} className="min-h-screen pt-48 pb-20 px-6 flex flex-col items-center overflow-hidden">
-        {/* Animated Background Orb */}
         <div 
           className="absolute w-[800px] h-[800px] bg-violet-500/10 rounded-full blur-[140px] pointer-events-none transition-transform duration-1000 ease-out z-0"
           style={{ 
@@ -96,11 +127,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
                 Begin Construction
                 <ArrowRight className="group-hover:translate-x-2 transition-transform" />
               </button>
-              
-              <div className="flex items-center gap-3 text-slate-600 font-black text-sm uppercase tracking-widest px-4 py-2 bg-white/80 rounded-2xl border border-slate-200 shadow-sm">
-                <MousePointer2 size={18} />
-                <span>Interact with the Blueprint</span>
-              </div>
             </div>
           </div>
 
@@ -124,7 +150,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
                   </div>
                 </div>
 
-                {/* The Interactive Habit Card */}
                 <div 
                   onClick={triggerHeroConfetti}
                   className={`cursor-pointer p-8 rounded-[2rem] transition-all duration-500 border-2 shadow-sm ${
@@ -143,11 +168,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
                       <h5 className={`font-black text-xl mb-1 ${isHabitTicked ? 'text-slate-400 line-through' : 'text-slate-900'}`}>Deep Meditation</h5>
                       <div className="flex items-center gap-2">
                         <span className="text-[11px] font-black uppercase tracking-widest text-violet-600 bg-violet-50 px-2 py-0.5 rounded">Daily</span>
-                        <div className="flex gap-1">
-                          {[1,2,3,4,5].map(i => (
-                            <div key={i} className={`w-1.5 h-4 rounded-full ${i <= 3 || isHabitTicked ? 'bg-violet-600' : 'bg-slate-300'}`}></div>
-                          ))}
-                        </div>
                       </div>
                     </div>
                   </div>
@@ -160,19 +180,150 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
                       style={{ width: isHabitTicked ? '100%' : '60%' }}
                     ></div>
                   </div>
-                  <div className="flex justify-between text-xs font-black text-slate-800 uppercase tracking-[0.2em]">
-                    <span>Structural Integrity</span>
-                    <span className="text-violet-600">{isHabitTicked ? '100%' : '60%'}</span>
-                  </div>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
-              {/* Floating elements */}
-              <div className="absolute -top-8 -right-8 bg-white p-5 rounded-2xl animate-float shadow-2xl hidden md:block border border-slate-100" style={{ animationDelay: '1s' }}>
-                <Trophy className="text-amber-500" size={32} fill="currentColor" />
+      {/* New Interactive Flow Carousel */}
+      <section className="py-40 px-6 bg-slate-900 text-white relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-b from-slate-50 to-transparent opacity-10"></div>
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col lg:flex-row items-center gap-20">
+            <div className="lg:w-1/2 space-y-12">
+              <div className="space-y-4">
+                <span className="text-violet-400 font-black uppercase tracking-[0.3em] text-sm">Interactive Demo</span>
+                <h3 className="text-5xl lg:text-7xl font-black tracking-tight leading-none">The Architectural Workflow</h3>
+                <p className="text-slate-400 text-xl font-bold max-w-lg">How we engineer consistency from the ground up.</p>
               </div>
-              <div className="absolute -bottom-12 -left-12 bg-white p-5 rounded-2xl animate-float shadow-2xl hidden md:block border border-slate-100">
-                <Brain className="text-fuchsia-600" size={32} fill="currentColor" />
+
+              <div className="space-y-10 relative">
+                {FLOW_STEPS.map((step, idx) => (
+                  <div 
+                    key={step.id}
+                    onClick={() => setActiveStep(idx)}
+                    className={`cursor-pointer transition-all duration-500 p-8 rounded-[2rem] border-2 flex items-start gap-6 ${
+                      activeStep === idx 
+                        ? 'bg-slate-800 border-violet-500 shadow-2xl scale-105' 
+                        : 'bg-transparent border-slate-800 opacity-40 hover:opacity-60'
+                    }`}
+                  >
+                    <div className={`p-4 rounded-2xl bg-slate-900 shadow-inner shrink-0 transition-transform ${activeStep === idx ? 'scale-110' : ''}`}>
+                      {step.icon}
+                    </div>
+                    <div>
+                      <h4 className="font-black text-2xl uppercase tracking-tight mb-1">{step.title}</h4>
+                      <p className={`font-bold transition-colors ${activeStep === idx ? 'text-violet-400' : 'text-slate-500'}`}>{step.subtitle}</p>
+                      {activeStep === idx && (
+                        <p className="mt-4 text-slate-300 font-medium leading-relaxed animate-in fade-in slide-in-from-left-2 duration-500">
+                          {step.description}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Visual Preview Side */}
+            <div className="lg:w-1/2 relative h-[600px] w-full flex items-center justify-center">
+              <div className="absolute -inset-20 bg-violet-600/20 rounded-full blur-[120px] animate-pulse"></div>
+              
+              <div className="relative w-full max-w-md aspect-[4/5] bg-white rounded-[3rem] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] overflow-hidden border-8 border-slate-800 transition-all duration-700">
+                {/* Internal App Mockup Screen */}
+                <div className="absolute inset-0 bg-slate-50 p-8 flex flex-col gap-6">
+                  {/* Mock Nav */}
+                  <div className="flex justify-between items-center opacity-40">
+                    <div className="flex gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-slate-200"></div>
+                      <div className="w-20 h-8 rounded-lg bg-slate-200"></div>
+                    </div>
+                    <div className="w-10 h-10 rounded-full bg-violet-600"></div>
+                  </div>
+
+                  {/* Dynamic Content Based on Active Step */}
+                  <div className="flex-1 space-y-8 animate-in fade-in zoom-in-95 duration-700" key={activeStep}>
+                    {activeStep === 0 && (
+                      <div className="space-y-6">
+                        <div className="h-8 w-40 bg-slate-900 rounded-lg"></div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="h-24 rounded-2xl bg-white border border-slate-200 p-4 space-y-2">
+                             <div className="h-4 w-12 bg-emerald-100 rounded"></div>
+                             <div className="h-4 w-full bg-slate-200 rounded"></div>
+                          </div>
+                          <div className="h-24 rounded-2xl bg-white border-2 border-violet-500 p-4 space-y-2 shadow-lg scale-105">
+                             <div className="h-4 w-12 bg-violet-100 rounded"></div>
+                             <div className="h-4 w-full bg-slate-200 rounded"></div>
+                             <div className="h-2 w-full bg-violet-600 rounded-full"></div>
+                          </div>
+                        </div>
+                        <div className="p-6 bg-slate-900 rounded-3xl text-white font-black text-center flex items-center justify-center gap-3">
+                          <Plus size={20} /> Establish System
+                        </div>
+                      </div>
+                    )}
+
+                    {activeStep === 1 && (
+                      <div className="space-y-6">
+                         <div className="h-8 w-48 bg-slate-900 rounded-lg"></div>
+                         <div className="space-y-3">
+                            {[1,2,3].map(i => (
+                              <div key={i} className={`p-5 rounded-2xl border flex items-center gap-4 ${i === 2 ? 'bg-emerald-50 border-emerald-500/30' : 'bg-white border-slate-100'}`}>
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${i === 2 ? 'bg-emerald-500 text-white' : 'bg-slate-100'}`}>
+                                  {i === 2 && <Check size={20} strokeWidth={3} />}
+                                </div>
+                                <div className={`h-4 bg-slate-200 rounded ${i === 1 ? 'w-32' : i === 2 ? 'w-48 opacity-40 line-through' : 'w-24'}`}></div>
+                              </div>
+                            ))}
+                         </div>
+                         <div className="flex justify-between items-center pt-4">
+                            <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
+                               <div className="h-full bg-violet-600 w-2/3"></div>
+                            </div>
+                            <span className="ml-4 font-black text-slate-900">66%</span>
+                         </div>
+                      </div>
+                    )}
+
+                    {activeStep === 2 && (
+                      <div className="space-y-6">
+                         <div className="p-6 bg-violet-600 rounded-3xl text-white space-y-4 shadow-xl">
+                            <div className="flex items-center gap-3">
+                               <Brain size={24} fill="currentColor" />
+                               <span className="font-black uppercase tracking-widest text-xs">Neural Insights</span>
+                            </div>
+                            <div className="space-y-2">
+                               <div className="h-3 w-full bg-white/20 rounded"></div>
+                               <div className="h-3 w-5/6 bg-white/20 rounded"></div>
+                               <div className="h-3 w-4/6 bg-white/20 rounded"></div>
+                            </div>
+                         </div>
+                         <div className="grid grid-cols-2 gap-4">
+                            <div className="p-4 bg-white rounded-2xl border border-slate-100 flex flex-col items-center">
+                               <div className="h-4 w-12 bg-slate-100 rounded mb-2"></div>
+                               <div className="text-2xl font-black text-slate-900">82%</div>
+                            </div>
+                            <div className="p-4 bg-white rounded-2xl border border-slate-100 flex flex-col items-center">
+                               <div className="h-4 w-12 bg-slate-100 rounded mb-2"></div>
+                               <div className="text-2xl font-black text-slate-900">14d</div>
+                            </div>
+                         </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Navigation Arrows */}
+                <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-4">
+                   <button onClick={prevStep} className="p-4 rounded-full bg-slate-900 text-white hover:bg-violet-600 transition-colors shadow-xl">
+                      <ChevronLeft size={24} />
+                   </button>
+                   <button onClick={nextStep} className="p-4 rounded-full bg-slate-900 text-white hover:bg-violet-600 transition-colors shadow-xl">
+                      <ChevronRight size={24} />
+                   </button>
+                </div>
               </div>
             </div>
           </div>
