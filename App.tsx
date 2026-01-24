@@ -23,7 +23,10 @@ export default function App() {
   const [state, setState] = useState<AppState>({ habits: [], goals: [], logs: {}, earnedBadges: [] });
   const [isLoaded, setIsLoaded] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved');
-  const [showAuth, setShowAuth] = useState(false);
+  
+  // Routing State
+  const [currentPath, setCurrentPath] = useState(window.location.pathname);
+
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('theme') === 'dark' || 
@@ -31,6 +34,26 @@ export default function App() {
     }
     return false;
   });
+
+  // Navigation Helper
+  const navigateTo = (path: string) => {
+    window.history.pushState({}, '', path);
+    setCurrentPath(path);
+    // Auto-scroll logic for internal sections
+    const sectionId = path.replace('/', '');
+    if (['dashboard', 'habits', 'goals', 'analytics', 'achievements'].includes(sectionId)) {
+      setTimeout(() => {
+        const el = document.getElementById(sectionId === 'dashboard' ? 'root' : sectionId);
+        el?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    }
+  };
+
+  useEffect(() => {
+    const handlePopState = () => setCurrentPath(window.location.pathname);
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -68,6 +91,7 @@ export default function App() {
             };
             setUser(userData);
             loadUserData(userData.id);
+            if (currentPath === '/login' || currentPath === '/') navigateTo('/dashboard');
         } else { setIsLoaded(true); }
     });
 
@@ -80,10 +104,12 @@ export default function App() {
             };
             setUser(userData);
             loadUserData(userData.id);
+            if (currentPath === '/login' || currentPath === '/') navigateTo('/dashboard');
         } else {
             setUser(null);
             setState({ habits: [], goals: [], logs: {}, earnedBadges: [] });
             setIsLoaded(true);
+            if (currentPath !== '/') navigateTo('/');
         }
     });
     return () => subscription.unsubscribe();
@@ -114,7 +140,6 @@ export default function App() {
   const [isHabitModalOpen, setHabitModalOpen] = useState(false);
   const [currentHabitTab, setCurrentHabitTab] = useState<Frequency>(Frequency.DAILY);
   const [isSidebarOpen, setSidebarOpen] = useState(false); 
-  const [activeSection, setActiveSection] = useState('dashboard');
   const mainRef = useRef<HTMLDivElement>(null);
 
   const [newHabitTitle, setNewHabitTitle] = useState('');
@@ -176,20 +201,15 @@ export default function App() {
     });
   };
 
-  const scrollToSection = (id: string) => {
-    setSidebarOpen(false); setActiveSection(id);
-    if (id === 'dashboard') { mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' }); return; }
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
-  };
-
   if (!isLoaded) return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
         <div className="w-16 h-16 border-4 border-violet-200 border-t-violet-600 rounded-full animate-spin"></div>
     </div>
   );
 
-  if (!user && showAuth) return <AuthScreen onAuthSuccess={() => setShowAuth(false)} />;
-  if (!user) return <LandingPage onStart={() => setShowAuth(true)} />;
+  // Router Logic
+  if (!user && currentPath === '/login') return <AuthScreen onAuthSuccess={() => navigateTo('/dashboard')} />;
+  if (!user) return <LandingPage onStart={() => navigateTo('/login')} />;
 
   const todayKey = getTodayKey();
   const todayLog = state.logs[todayKey] || { date: todayKey, completedHabitIds: [], goalProgress: {} };
@@ -201,7 +221,7 @@ export default function App() {
       {/* Sidebar */}
       <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transform transition-transform duration-500 ease-out lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex flex-col h-full p-8">
-          <div className="flex items-center gap-4 mb-12">
+          <div className="flex items-center gap-4 mb-12 cursor-pointer" onClick={() => navigateTo('/')}>
             <div className="bg-violet-600 p-3 rounded-2xl shadow-xl shadow-violet-200 dark:shadow-none">
               <Layout className="text-white" size={24} />
             </div>
@@ -212,17 +232,17 @@ export default function App() {
 
           <nav className="space-y-3 flex-1">
             {[
-              { id: 'dashboard', icon: Home, label: 'Vision' },
-              { id: 'habits', icon: ListChecks, label: 'Routines' },
-              { id: 'goals', icon: Target, label: 'Milestones' },
-              { id: 'analytics', icon: PieChart, label: 'Insights' },
-              { id: 'achievements', icon: Medal, label: 'Trophies' },
+              { id: 'dashboard', path: '/dashboard', icon: Home, label: 'Vision' },
+              { id: 'habits', path: '/routines', icon: ListChecks, label: 'Routines' },
+              { id: 'goals', path: '/milestones', icon: Target, label: 'Milestones' },
+              { id: 'analytics', path: '/insights', icon: PieChart, label: 'Insights' },
+              { id: 'achievements', path: '/trophies', icon: Medal, label: 'Trophies' },
             ].map(item => (
               <button 
                 key={item.id}
-                onClick={() => scrollToSection(item.id)} 
+                onClick={() => { navigateTo(item.path); setSidebarOpen(false); }} 
                 className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl font-bold transition-all text-left ${
-                  activeSection === item.id
+                  currentPath === item.path
                     ? 'bg-violet-600 text-white shadow-xl shadow-violet-200 dark:shadow-none scale-[1.02]' 
                     : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
                 }`}
@@ -255,7 +275,6 @@ export default function App() {
             </div>
 
             <div className="flex items-center gap-4">
-                {/* Theme Toggle */}
                 <button 
                   onClick={() => setIsDarkMode(!isDarkMode)}
                   className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-violet-600 dark:hover:text-violet-400 transition-all hover:scale-105"
@@ -333,6 +352,14 @@ export default function App() {
                                North Stars
                             </h3>
                             <GoalTracker goals={state.goals} onUpdateProgress={updateGoalProgress} onDeleteGoal={(id) => setState(prev => ({...prev, goals: prev.goals.filter(g => g.id !== id)}))} />
+                        </section>
+
+                        <section id="achievements" className="scroll-mt-28">
+                             <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-8 flex items-center gap-3">
+                               <div className="p-2 bg-amber-500/10 dark:bg-amber-400/10 rounded-xl text-amber-500 dark:text-amber-400"><Medal size={24}/></div>
+                               Architect Badges
+                            </h3>
+                            <Suspense fallback={null}><Achievements earnedBadgeIds={state.earnedBadges} /></Suspense>
                         </section>
                     </div>
                 </div>
