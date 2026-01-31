@@ -1,20 +1,17 @@
 
-import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
-import { Plus, Calendar, Layout, BarChart3, CheckCircle2, Target, Menu, X, Home, ListChecks, PieChart, Activity, RotateCcw, Bell, LogOut, Medal, Sparkles as SparklesIcon, Moon, Sun } from 'lucide-react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
+import { Plus, Layout, CheckCircle2, Target, Menu, Home, ListChecks, LogOut, Moon, Sun, CloudCheck, Cloud } from 'lucide-react';
 import { format } from 'date-fns';
 import { supabase, isSupabaseConfigured } from './services/supabaseClient';
 
-import { Habit, Goal, Category, AppState, Frequency, DailyLog, User, Badge } from './types';
+import { Habit, Goal, Category, AppState, Frequency, User } from './types';
 import { AuthScreen, TEST_ACCOUNT_ID } from './components/AuthScreen';
 import { LandingPage } from './components/LandingPage';
 import { HabitTracker } from './components/HabitTracker';
 import { GoalTracker } from './components/GoalTracker';
 import { AIOverview } from './components/AIOverview';
 
-const Analytics = lazy(() => import('./components/Analytics').then(module => ({ default: module.Analytics })));
 const KairoChat = lazy(() => import('./components/KairoChat').then(module => ({ default: module.KairoChat })));
-const Achievements = lazy(() => import('./components/Achievements').then(module => ({ default: module.Achievements })));
-
 import { Modal } from './components/UIComponents';
 
 const getTodayKey = () => format(new Date(), 'yyyy-MM-dd');
@@ -22,9 +19,7 @@ const getTodayKey = () => format(new Date(), 'yyyy-MM-dd');
 const PATH_TO_ID: Record<string, string> = {
   '/dashboard': 'root',
   '/routines': 'habits',
-  '/milestones': 'goals',
-  '/insights': 'analytics',
-  '/trophies': 'achievements'
+  '/milestones': 'goals'
 };
 
 export default function App() {
@@ -109,7 +104,7 @@ export default function App() {
       const { data, error } = await client.from('user_data').select('content').eq('user_id', userData.id).single();
       if (data?.content) setState(data.content as AppState);
     } catch (err) {
-        console.warn("Could not fetch data from cloud. Starting fresh.");
+        console.warn("Starting with a fresh cloud record.");
     } finally { setIsLoaded(true); }
   };
 
@@ -129,21 +124,17 @@ export default function App() {
         if (error) throw error;
         setSaveStatus('saved');
       } catch (err) { 
-        console.error("Cloud Save Failed:", err);
+        console.error("Cloud Save Error:", err);
         setSaveStatus('error'); 
       }
     };
-    const timeoutId = setTimeout(saveData, 2000);
+    const timeoutId = setTimeout(saveData, 1500);
     return () => clearTimeout(timeoutId);
   }, [state, isLoaded, user]);
 
   const [isHabitModalOpen, setHabitModalOpen] = useState(false);
-  const [currentHabitTab, setCurrentHabitTab] = useState<Frequency>(Frequency.DAILY);
   const [isSidebarOpen, setSidebarOpen] = useState(false); 
-
   const [newHabitTitle, setNewHabitTitle] = useState('');
-  const [newHabitCategory, setNewHabitCategory] = useState<Category>(Category.OTHER);
-  const [newHabitFrequency, setNewHabitFrequency] = useState<Frequency>(Frequency.DAILY);
 
   const toggleHabit = (id: string) => {
     const todayKey = getTodayKey();
@@ -163,7 +154,7 @@ export default function App() {
 
   const addHabit = () => {
     if (!newHabitTitle.trim()) return;
-    const newHabit: Habit = { id: crypto.randomUUID(), title: newHabitTitle, category: newHabitCategory, createdAt: new Date().toISOString(), streak: 0, frequency: newHabitFrequency };
+    const newHabit: Habit = { id: crypto.randomUUID(), title: newHabitTitle, category: Category.OTHER, createdAt: new Date().toISOString(), streak: 0, frequency: Frequency.DAILY };
     setState(prev => ({ ...prev, habits: [...prev.habits, newHabit] }));
     setNewHabitTitle(''); setHabitModalOpen(false);
   };
@@ -182,7 +173,7 @@ export default function App() {
         <div className="flex flex-col h-full p-8">
           <div className="flex items-center gap-4 mb-12">
             <div className="bg-violet-600 p-2.5 rounded-xl shadow-lg"><Layout className="text-white" size={24} /></div>
-            <h1 className="text-2xl font-black text-slate-900 dark:text-white">Habit<span className="text-violet-500">Arch.</span></h1>
+            <h1 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Habit<span className="text-violet-500">Arch</span></h1>
           </div>
           <nav className="space-y-2 flex-1">
              <button onClick={() => navigateTo('/dashboard')} className={`w-full flex items-center gap-4 px-5 py-4 rounded-xl font-bold transition-all ${currentPath === '/dashboard' ? 'bg-violet-600 text-white shadow-xl' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}><Home size={20} /> Vision</button>
@@ -196,8 +187,18 @@ export default function App() {
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         <header className="h-20 flex items-center justify-between px-8 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
             <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 bg-white rounded-lg shadow-sm border"><Menu /></button>
-            <div className="flex items-center gap-4 ml-auto">
-                {saveStatus === 'saving' && <span className="text-[10px] font-black text-violet-500 animate-pulse">Syncing...</span>}
+            <div className="flex items-center gap-6 ml-auto">
+                <div className="flex items-center gap-2">
+                    {saveStatus === 'saving' ? (
+                        <div className="flex items-center gap-2 text-violet-500 animate-pulse">
+                            <Cloud size={16} /> <span className="text-[10px] font-black uppercase tracking-widest">Syncing</span>
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-2 text-slate-400">
+                            <CloudCheck size={16} /> <span className="text-[10px] font-black uppercase tracking-widest">Cloud Saved</span>
+                        </div>
+                    )}
+                </div>
                 <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">{isDarkMode ? <Sun size={20} /> : <Moon size={20} />}</button>
                 <div className="flex items-center gap-3 px-4 py-2 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
                     <span className="font-bold text-sm text-slate-700 dark:text-slate-200">{user.name}</span>
