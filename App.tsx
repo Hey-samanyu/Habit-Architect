@@ -2,7 +2,8 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { 
   Plus, Layout, CheckCircle2, Target, Menu, Home, ListChecks, 
-  LogOut, Moon, Sun, Cloud, BarChart3, Medal, Sparkles
+  LogOut, Moon, Sun, Cloud, BarChart3, Medal, Sparkles,
+  Heart, Briefcase, GraduationCap, Compass, HelpCircle
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { supabase, isSupabaseConfigured } from './services/supabaseClient';
@@ -28,6 +29,12 @@ export default function App() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved');
   const [currentPath, setCurrentPath] = useState(window.location.pathname || '/');
+
+  // Habit Creation State
+  const [isHabitModalOpen, setHabitModalOpen] = useState(false);
+  const [newHabitTitle, setNewHabitTitle] = useState('');
+  const [newHabitCategory, setNewHabitCategory] = useState<Category>(Category.OTHER);
+  const [newHabitFrequency, setNewHabitFrequency] = useState<Frequency>(Frequency.DAILY);
 
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -127,9 +134,7 @@ export default function App() {
     return () => clearTimeout(timeoutId);
   }, [state, isLoaded, user]);
 
-  const [isHabitModalOpen, setHabitModalOpen] = useState(false);
   const [isSidebarOpen, setSidebarOpen] = useState(false); 
-  const [newHabitTitle, setNewHabitTitle] = useState('');
 
   const toggleHabit = (id: string) => {
     const todayKey = getTodayKey();
@@ -149,9 +154,21 @@ export default function App() {
 
   const addHabit = () => {
     if (!newHabitTitle.trim()) return;
-    const newHabit: Habit = { id: crypto.randomUUID(), title: newHabitTitle, category: Category.OTHER, createdAt: new Date().toISOString(), streak: 0, frequency: Frequency.DAILY };
+    const newHabit: Habit = { 
+      id: crypto.randomUUID(), 
+      title: newHabitTitle, 
+      category: newHabitCategory, 
+      createdAt: new Date().toISOString(), 
+      streak: 0, 
+      frequency: newHabitFrequency 
+    };
     setState(prev => ({ ...prev, habits: [...prev.habits, newHabit] }));
-    setNewHabitTitle(''); setHabitModalOpen(false);
+    
+    // Reset form
+    setNewHabitTitle(''); 
+    setNewHabitCategory(Category.OTHER);
+    setNewHabitFrequency(Frequency.DAILY);
+    setHabitModalOpen(false);
   };
 
   const renderContent = () => {
@@ -165,7 +182,7 @@ export default function App() {
           <div className="space-y-8 animate-in fade-in duration-500">
             <div className="flex justify-between items-center">
                 <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Your Routines</h2>
-                <button onClick={() => setHabitModalOpen(true)} className="bg-violet-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2"><Plus size={20}/> New</button>
+                <button onClick={() => setHabitModalOpen(true)} className="bg-violet-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-transform hover:scale-105 active:scale-95 shadow-lg shadow-violet-200 dark:shadow-none"><Plus size={20}/> New</button>
             </div>
             <HabitTracker habits={state.habits} completedHabitIds={todayLog.completedHabitIds} onToggleHabit={toggleHabit} onDeleteHabit={(id) => setState(prev => ({ ...prev, habits: prev.habits.filter(h => h.id !== id) }))} />
           </div>
@@ -195,16 +212,16 @@ export default function App() {
       default: // Dashboard / Overview
         return (
           <div className="space-y-12 animate-in fade-in duration-500">
-            <div className="flex items-center justify-between">
-              <h2 className="text-4xl font-black text-slate-900 dark:text-white">Design your <span className="text-violet-600">Success.</span></h2>
-              <button onClick={() => setHabitModalOpen(true)} className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-6 py-4 rounded-2xl font-black shadow-xl hover:scale-105 transition-all flex items-center gap-2"><Plus size={20} /> New Routine</button>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+              <h2 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white tracking-tight leading-none">Design your <br /><span className="text-violet-600">Success.</span></h2>
+              <button onClick={() => setHabitModalOpen(true)} className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-8 py-5 rounded-2xl font-black shadow-xl hover:scale-105 transition-all flex items-center justify-center gap-3"><Plus size={24} /> New Routine</button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-800 flex flex-col gap-4 shadow-sm">
-                <CheckCircle2 className="text-emerald-500" size={32} />
-                <span className="text-3xl font-black dark:text-white">{percentage}%</span>
-                <p className="text-[10px] font-black uppercase text-slate-400">Daily Trajectory</p>
+              <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-800 flex flex-col gap-4 shadow-sm transition-colors group hover:border-emerald-200 dark:hover:border-emerald-900/40">
+                <CheckCircle2 className="text-emerald-500 group-hover:scale-110 transition-transform" size={32} />
+                <span className="text-4xl font-black dark:text-white">{percentage}%</span>
+                <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Daily Trajectory</p>
               </div>
             </div>
 
@@ -212,10 +229,18 @@ export default function App() {
               <div className="xl:col-span-2 space-y-8">
                 <AIOverview habits={state.habits} goals={state.goals} logs={state.logs} />
                 <section id="habits">
+                   <div className="flex items-center gap-2 mb-6">
+                     <ListChecks size={20} className="text-slate-400" />
+                     <h3 className="font-black text-slate-400 uppercase tracking-widest text-xs">Today's Blueprint</h3>
+                   </div>
                   <HabitTracker habits={state.habits} completedHabitIds={todayLog.completedHabitIds} onToggleHabit={toggleHabit} onDeleteHabit={(id) => setState(prev => ({ ...prev, habits: prev.habits.filter(h => h.id !== id) }))} />
                 </section>
               </div>
               <div className="xl:col-span-1">
+                 <div className="flex items-center gap-2 mb-6">
+                     <Target size={20} className="text-slate-400" />
+                     <h3 className="font-black text-slate-400 uppercase tracking-widest text-xs">Structural Milestones</h3>
+                   </div>
                 <GoalTracker goals={state.goals} onUpdateProgress={(id, delta) => setState(prev => ({ ...prev, goals: prev.goals.map(g => g.id === id ? { ...g, current: Math.max(0, g.current + delta) } : g) }))} onDeleteGoal={(id) => setState(prev => ({ ...prev, goals: prev.goals.filter(g => g.id !== id) }))} />
               </div>
             </div>
@@ -223,6 +248,20 @@ export default function App() {
         );
     }
   };
+
+  const categories = [
+    { type: Category.HEALTH, icon: Heart, color: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10' },
+    { type: Category.WORK, icon: Briefcase, color: 'text-blue-500 bg-blue-50 dark:bg-blue-500/10' },
+    { type: Category.LEARNING, icon: GraduationCap, color: 'text-amber-500 bg-amber-50 dark:bg-amber-500/10' },
+    { type: Category.MINDFULNESS, icon: Compass, color: 'text-purple-500 bg-purple-50 dark:bg-purple-500/10' },
+    { type: Category.OTHER, icon: HelpCircle, color: 'text-slate-500 bg-slate-50 dark:bg-slate-500/10' }
+  ];
+
+  const frequencies = [
+    { type: Frequency.DAILY, label: 'Daily' },
+    { type: Frequency.WEEKLY, label: 'Weekly' },
+    { type: Frequency.MONTHLY, label: 'Monthly' }
+  ];
 
   if (!isLoaded) return <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950"><div className="w-12 h-12 border-4 border-t-violet-600 rounded-full animate-spin"></div></div>;
   if (!user && currentPath === '/login') return <AuthScreen onAuthSuccess={(u) => { setUser(u); navigateTo('/dashboard'); }} />;
@@ -265,7 +304,7 @@ export default function App() {
                         </div>
                     )}
                 </div>
-                <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">{isDarkMode ? <Sun size={18} /> : <Moon size={18} />}</button>
+                <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm active:scale-95 transition-transform">{isDarkMode ? <Sun size={18} /> : <Moon size={18} />}</button>
                 <div className="flex items-center gap-3 pl-4 border-l border-slate-200 dark:border-slate-700">
                     <span className="hidden sm:inline font-bold text-sm text-slate-700 dark:text-slate-200">{user.name}</span>
                     <div className="w-10 h-10 bg-violet-600 rounded-xl flex items-center justify-center text-white font-black shadow-lg shadow-violet-200 dark:shadow-none">{user.name[0]}</div>
@@ -283,10 +322,68 @@ export default function App() {
       <Suspense fallback={null}><KairoChat habits={state.habits} goals={state.goals} logs={state.logs} /></Suspense>
 
       <Modal isOpen={isHabitModalOpen} onClose={() => setHabitModalOpen(false)} title="New Routine">
-          <div className="space-y-6">
-              <input value={newHabitTitle} onChange={e => setNewHabitTitle(e.target.value)} placeholder="What's the habit?" className="w-full bg-slate-50 dark:bg-slate-800 p-4 rounded-xl font-bold border-2 border-transparent focus:border-violet-600 outline-none text-slate-900 dark:text-white shadow-inner"/>
-              <button onClick={addHabit} className="w-full bg-violet-600 text-white p-5 rounded-xl font-black shadow-xl hover:bg-violet-700 transition-all flex items-center justify-center gap-3">
-                <Plus size={20} /> CREATE ROUTINE
+          <div className="space-y-8">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 ml-1">Routine Label</label>
+                <input 
+                  value={newHabitTitle} 
+                  onChange={e => setNewHabitTitle(e.target.value)} 
+                  placeholder="e.g. Deep Work Session" 
+                  className="w-full bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl font-bold border-2 border-slate-100 dark:border-slate-700 focus:border-violet-600 outline-none text-slate-900 dark:text-white shadow-inner transition-all"
+                  autoFocus
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 ml-1">Structural Category</label>
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                  {categories.map((cat) => {
+                    const Icon = cat.icon;
+                    const isSelected = newHabitCategory === cat.type;
+                    return (
+                      <button
+                        key={cat.type}
+                        onClick={() => setNewHabitCategory(cat.type)}
+                        className={`flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all gap-2 group ${
+                          isSelected 
+                            ? 'bg-violet-600 border-violet-600 text-white shadow-lg' 
+                            : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-violet-300'
+                        }`}
+                        title={cat.type}
+                      >
+                        <Icon size={20} className={isSelected ? 'text-white' : ''} />
+                        <span className="text-[9px] font-black uppercase tracking-tighter truncate w-full text-center">{cat.type}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 ml-1">Frequency Cycle</label>
+                <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200 dark:border-slate-700">
+                  {frequencies.map((freq) => (
+                    <button
+                      key={freq.type}
+                      onClick={() => setNewHabitFrequency(freq.type)}
+                      className={`flex-1 py-3 text-xs font-black rounded-xl transition-all ${
+                        newHabitFrequency === freq.type 
+                          ? 'bg-white dark:bg-slate-700 text-violet-600 dark:text-violet-400 shadow-sm' 
+                          : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+                      }`}
+                    >
+                      {freq.label.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              <button 
+                onClick={addHabit} 
+                disabled={!newHabitTitle.trim()}
+                className="w-full bg-violet-600 disabled:bg-slate-300 dark:disabled:bg-slate-800 disabled:opacity-50 text-white py-5 rounded-2xl font-black shadow-xl shadow-violet-200 dark:shadow-none hover:bg-violet-700 hover:scale-[1.02] transition-all flex items-center justify-center gap-3 mt-4"
+              >
+                <Plus size={24} strokeWidth={3} /> ESTABLISH SYSTEM
               </button>
           </div>
       </Modal>
