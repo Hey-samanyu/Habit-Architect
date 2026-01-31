@@ -9,7 +9,6 @@ interface AuthScreenProps {
 }
 
 // This is the "Key" that opens your database for the test account.
-// Match this ID in your Supabase SQL Policy.
 export const TEST_ACCOUNT_ID = '77777777-7777-7777-7777-777777777777';
 
 export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
@@ -79,7 +78,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
     setError(null);
 
     if (isTestAccount) {
-        // Log in with the Virtual Cloud ID
         onAuthSuccess({
             id: TEST_ACCOUNT_ID,
             email: 'test@test.com',
@@ -92,8 +90,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
     if (!supabase) return;
 
     try {
-      // Correcting the verification type to match Supabase requirements
-      // Login/Magiclink uses 'email', Signups use 'signup'
       const verifyType: 'email' | 'signup' = mode === 'signup' ? 'signup' : 'email';
 
       const { data, error } = await supabase.auth.verifyOtp({
@@ -112,7 +108,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
         });
       }
     } catch (err: any) {
-      setError("Invalid code. Please check your email.");
+      setError("Incorrect code. Please check and try again.");
     } finally {
       setLoading(false);
     }
@@ -153,9 +149,17 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
           <form onSubmit={handleVerifyCode} className="space-y-6">
             <div className="text-center mb-4">
                 <p className="text-slate-500 font-bold text-sm">Enter the code sent to {email}</p>
-                {isTestAccount && <p className="text-violet-600 font-black text-xs uppercase mt-1 animate-pulse">Test Mode Active: Instant Access</p>}
+                {isTestAccount && <p className="text-violet-600 font-black text-xs uppercase mt-1 animate-pulse">Test Mode: Any text works!</p>}
             </div>
-            <input type="text" required maxLength={6} value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g,''))} className="w-full py-5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-violet-600 font-black text-3xl tracking-[0.5em] text-center" placeholder="000000" />
+            {/* REMOVED maxLength and Numeric restriction here */}
+            <input 
+              type="text" 
+              required 
+              value={otp} 
+              onChange={e => setOtp(e.target.value)} 
+              className="w-full py-5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-violet-600 font-black text-2xl tracking-[0.2em] text-center" 
+              placeholder="Code / Password" 
+            />
             <button type="submit" disabled={loading} className="w-full py-5 bg-violet-600 text-white rounded-2xl font-black shadow-xl hover:bg-violet-700 transition-all">
               {loading ? <Loader2 className="animate-spin mx-auto" /> : 'VERIFY & ENTER'}
             </button>

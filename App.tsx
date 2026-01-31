@@ -3,7 +3,8 @@ import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { 
   Plus, Layout, CheckCircle2, Target, Menu, Home, ListChecks, 
   LogOut, Moon, Sun, Cloud, BarChart3, Medal, Sparkles,
-  Heart, Briefcase, GraduationCap, Compass, HelpCircle
+  Heart, Briefcase, GraduationCap, Compass, HelpCircle, 
+  Trophy, Repeat, Calendar
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { supabase, isSupabaseConfigured } from './services/supabaseClient';
@@ -35,6 +36,13 @@ export default function App() {
   const [newHabitTitle, setNewHabitTitle] = useState('');
   const [newHabitCategory, setNewHabitCategory] = useState<Category>(Category.OTHER);
   const [newHabitFrequency, setNewHabitFrequency] = useState<Frequency>(Frequency.DAILY);
+
+  // Goal Creation State
+  const [isGoalModalOpen, setGoalModalOpen] = useState(false);
+  const [newGoalTitle, setNewGoalTitle] = useState('');
+  const [newGoalTarget, setNewGoalTarget] = useState<number>(10);
+  const [newGoalUnit, setNewGoalUnit] = useState('Units');
+  const [newGoalFrequency, setNewGoalFrequency] = useState<Frequency>(Frequency.ONCE);
 
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -171,6 +179,26 @@ export default function App() {
     setHabitModalOpen(false);
   };
 
+  const addGoal = () => {
+    if (!newGoalTitle.trim()) return;
+    const newGoal: Goal = {
+      id: crypto.randomUUID(),
+      title: newGoalTitle,
+      target: newGoalTarget,
+      current: 0,
+      unit: newGoalUnit,
+      frequency: newGoalFrequency
+    };
+    setState(prev => ({ ...prev, goals: [...prev.goals, newGoal] }));
+    
+    // Reset form
+    setNewGoalTitle('');
+    setNewGoalTarget(10);
+    setNewGoalUnit('Units');
+    setNewGoalFrequency(Frequency.ONCE);
+    setGoalModalOpen(false);
+  };
+
   const renderContent = () => {
     const todayKey = getTodayKey();
     const todayLog = state.logs[todayKey] || { date: todayKey, completedHabitIds: [], goalProgress: {} };
@@ -190,7 +218,10 @@ export default function App() {
       case '/milestones':
         return (
           <div className="space-y-8 animate-in fade-in duration-500">
-            <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Milestones</h2>
+            <div className="flex justify-between items-center">
+                <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Milestones</h2>
+                <button onClick={() => setGoalModalOpen(true)} className="bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-transform hover:scale-105 active:scale-95 shadow-lg shadow-emerald-200 dark:shadow-none"><Plus size={20}/> New Milestone</button>
+            </div>
             <GoalTracker goals={state.goals} onUpdateProgress={(id, delta) => setState(prev => ({ ...prev, goals: prev.goals.map(g => g.id === id ? { ...g, current: Math.max(0, g.current + delta) } : g) }))} onDeleteGoal={(id) => setState(prev => ({ ...prev, goals: prev.goals.filter(g => g.id !== id) }))} />
           </div>
         );
@@ -214,7 +245,9 @@ export default function App() {
           <div className="space-y-12 animate-in fade-in duration-500">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
               <h2 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white tracking-tight leading-none">Design your <br /><span className="text-violet-600">Success.</span></h2>
-              <button onClick={() => setHabitModalOpen(true)} className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-8 py-5 rounded-2xl font-black shadow-xl hover:scale-105 transition-all flex items-center justify-center gap-3"><Plus size={24} /> New Routine</button>
+              <div className="flex gap-4">
+                <button onClick={() => setHabitModalOpen(true)} className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-6 py-4 rounded-2xl font-black shadow-xl hover:scale-105 transition-all flex items-center justify-center gap-3"><Plus size={20} /> New Routine</button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -237,10 +270,13 @@ export default function App() {
                 </section>
               </div>
               <div className="xl:col-span-1">
-                 <div className="flex items-center gap-2 mb-6">
-                     <Target size={20} className="text-slate-400" />
-                     <h3 className="font-black text-slate-400 uppercase tracking-widest text-xs">Structural Milestones</h3>
-                   </div>
+                 <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-2">
+                        <Target size={20} className="text-slate-400" />
+                        <h3 className="font-black text-slate-400 uppercase tracking-widest text-xs">Milestones</h3>
+                    </div>
+                    <button onClick={() => setGoalModalOpen(true)} className="text-violet-600 hover:text-violet-700 font-black text-[10px] uppercase tracking-widest">Add New</button>
+                 </div>
                 <GoalTracker goals={state.goals} onUpdateProgress={(id, delta) => setState(prev => ({ ...prev, goals: prev.goals.map(g => g.id === id ? { ...g, current: Math.max(0, g.current + delta) } : g) }))} onDeleteGoal={(id) => setState(prev => ({ ...prev, goals: prev.goals.filter(g => g.id !== id) }))} />
               </div>
             </div>
@@ -258,9 +294,10 @@ export default function App() {
   ];
 
   const frequencies = [
-    { type: Frequency.DAILY, label: 'Daily' },
-    { type: Frequency.WEEKLY, label: 'Weekly' },
-    { type: Frequency.MONTHLY, label: 'Monthly' }
+    { type: Frequency.DAILY, label: 'Daily', icon: Repeat },
+    { type: Frequency.WEEKLY, label: 'Weekly', icon: Calendar },
+    { type: Frequency.MONTHLY, label: 'Monthly', icon: Calendar },
+    { type: Frequency.ONCE, label: 'One-time', icon: Target }
   ];
 
   if (!isLoaded) return <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950"><div className="w-12 h-12 border-4 border-t-violet-600 rounded-full animate-spin"></div></div>;
@@ -269,7 +306,6 @@ export default function App() {
 
   return (
     <div id="root-container" className="flex h-screen bg-slate-50 dark:bg-slate-950 transition-colors">
-      {/* Mobile Overlay */}
       {isSidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
       
       <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transform lg:relative lg:translate-x-0 transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
@@ -321,69 +357,72 @@ export default function App() {
 
       <Suspense fallback={null}><KairoChat habits={state.habits} goals={state.goals} logs={state.logs} /></Suspense>
 
+      {/* Habit Modal */}
       <Modal isOpen={isHabitModalOpen} onClose={() => setHabitModalOpen(false)} title="New Routine">
           <div className="space-y-8">
               <div className="space-y-2">
                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 ml-1">Routine Label</label>
-                <input 
-                  value={newHabitTitle} 
-                  onChange={e => setNewHabitTitle(e.target.value)} 
-                  placeholder="e.g. Deep Work Session" 
-                  className="w-full bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl font-bold border-2 border-slate-100 dark:border-slate-700 focus:border-violet-600 outline-none text-slate-900 dark:text-white shadow-inner transition-all"
-                  autoFocus
-                />
+                <input value={newHabitTitle} onChange={e => setNewHabitTitle(e.target.value)} placeholder="e.g. Deep Work Session" className="w-full bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl font-bold border-2 border-slate-100 dark:border-slate-700 focus:border-violet-600 outline-none text-slate-900 dark:text-white shadow-inner transition-all" autoFocus />
               </div>
-
               <div className="space-y-2">
                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 ml-1">Structural Category</label>
                 <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                   {categories.map((cat) => {
                     const Icon = cat.icon;
-                    const isSelected = newHabitCategory === cat.type;
                     return (
-                      <button
-                        key={cat.type}
-                        onClick={() => setNewHabitCategory(cat.type)}
-                        className={`flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all gap-2 group ${
-                          isSelected 
-                            ? 'bg-violet-600 border-violet-600 text-white shadow-lg' 
-                            : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-violet-300'
-                        }`}
-                        title={cat.type}
-                      >
-                        <Icon size={20} className={isSelected ? 'text-white' : ''} />
+                      <button key={cat.type} onClick={() => setNewHabitCategory(cat.type)} className={`flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all gap-2 group ${newHabitCategory === cat.type ? 'bg-violet-600 border-violet-600 text-white shadow-lg' : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-violet-300'}`}>
+                        <Icon size={20} className={newHabitCategory === cat.type ? 'text-white' : ''} />
                         <span className="text-[9px] font-black uppercase tracking-tighter truncate w-full text-center">{cat.type}</span>
                       </button>
                     );
                   })}
                 </div>
               </div>
-
               <div className="space-y-2">
                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 ml-1">Frequency Cycle</label>
                 <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200 dark:border-slate-700">
-                  {frequencies.map((freq) => (
-                    <button
-                      key={freq.type}
-                      onClick={() => setNewHabitFrequency(freq.type)}
-                      className={`flex-1 py-3 text-xs font-black rounded-xl transition-all ${
-                        newHabitFrequency === freq.type 
-                          ? 'bg-white dark:bg-slate-700 text-violet-600 dark:text-violet-400 shadow-sm' 
-                          : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
-                      }`}
-                    >
+                  {frequencies.filter(f => f.type !== Frequency.ONCE).map((freq) => (
+                    <button key={freq.type} onClick={() => setNewHabitFrequency(freq.type)} className={`flex-1 py-3 text-xs font-black rounded-xl transition-all ${newHabitFrequency === freq.type ? 'bg-white dark:bg-slate-700 text-violet-600 dark:text-violet-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'}`}>
                       {freq.label.toUpperCase()}
                     </button>
                   ))}
                 </div>
               </div>
-              
-              <button 
-                onClick={addHabit} 
-                disabled={!newHabitTitle.trim()}
-                className="w-full bg-violet-600 disabled:bg-slate-300 dark:disabled:bg-slate-800 disabled:opacity-50 text-white py-5 rounded-2xl font-black shadow-xl shadow-violet-200 dark:shadow-none hover:bg-violet-700 hover:scale-[1.02] transition-all flex items-center justify-center gap-3 mt-4"
-              >
+              <button onClick={addHabit} disabled={!newHabitTitle.trim()} className="w-full bg-violet-600 disabled:bg-slate-300 dark:disabled:bg-slate-800 disabled:opacity-50 text-white py-5 rounded-2xl font-black shadow-xl shadow-violet-200 dark:shadow-none hover:bg-violet-700 hover:scale-[1.02] transition-all flex items-center justify-center gap-3">
                 <Plus size={24} strokeWidth={3} /> ESTABLISH SYSTEM
+              </button>
+          </div>
+      </Modal>
+
+      {/* Goal Modal */}
+      <Modal isOpen={isGoalModalOpen} onClose={() => setGoalModalOpen(false)} title="New Milestone">
+          <div className="space-y-6">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Milestone Name</label>
+                <input value={newGoalTitle} onChange={e => setNewGoalTitle(e.target.value)} placeholder="e.g. Read 500 Pages" className="w-full bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl font-bold border-2 border-slate-100 dark:border-slate-700 focus:border-emerald-600 outline-none text-slate-900 dark:text-white" autoFocus />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Target</label>
+                    <input type="number" value={newGoalTarget} onChange={e => setNewGoalTarget(parseInt(e.target.value) || 0)} className="w-full bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl font-bold border-2 border-slate-100 dark:border-slate-700 focus:border-emerald-600 outline-none text-slate-900 dark:text-white" />
+                </div>
+                <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Unit</label>
+                    <input value={newGoalUnit} onChange={e => setNewGoalUnit(e.target.value)} placeholder="e.g. Pages" className="w-full bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl font-bold border-2 border-slate-100 dark:border-slate-700 focus:border-emerald-600 outline-none text-slate-900 dark:text-white" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 ml-1">Tracking Type</label>
+                <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200 dark:border-slate-700">
+                  {frequencies.map((freq) => (
+                    <button key={freq.type} onClick={() => setNewGoalFrequency(freq.type)} className={`flex-1 py-3 text-[10px] font-black rounded-xl transition-all ${newGoalFrequency === freq.type ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'}`}>
+                      {freq.label.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <button onClick={addGoal} disabled={!newGoalTitle.trim()} className="w-full bg-emerald-600 disabled:bg-slate-300 dark:disabled:bg-slate-800 disabled:opacity-50 text-white py-5 rounded-2xl font-black shadow-xl shadow-emerald-200 dark:shadow-none hover:bg-emerald-700 hover:scale-[1.02] transition-all flex items-center justify-center gap-3">
+                <Trophy size={20} /> SET MILESTONE
               </button>
           </div>
       </Modal>
