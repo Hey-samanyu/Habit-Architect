@@ -1,7 +1,7 @@
 
 import React from 'react';
-import { Check, Trash2, Flame, Zap, Bell, Plus } from 'lucide-react';
-import { Habit, Category } from '../types';
+import { Check, Trash2, Flame, Zap, Bell, Calendar, Clock, Repeat } from 'lucide-react';
+import { Habit, Category, Frequency } from '../types';
 
 interface HabitTrackerProps {
   habits: Habit[];
@@ -10,6 +10,118 @@ interface HabitTrackerProps {
   onDeleteHabit: (id: string) => void;
 }
 
+// Move helper to determine colors based on category outside for cleaner code
+const getCategoryTheme = (cat: Category) => {
+  switch(cat) {
+    case Category.HEALTH: return { color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-400/10', border: 'border-emerald-100 dark:border-emerald-400/20' };
+    case Category.WORK: return { color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-400/10', border: 'border-blue-100 dark:border-blue-400/20' };
+    case Category.LEARNING: return { color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-400/10', border: 'border-amber-100 dark:border-amber-400/20' };
+    case Category.MINDFULNESS: return { color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-50 dark:bg-purple-400/10', border: 'border-purple-100 dark:border-purple-400/20' };
+    default: return { color: 'text-slate-600 dark:text-slate-400', bg: 'bg-slate-50 dark:bg-slate-400/10', border: 'border-slate-100 dark:border-slate-400/20' };
+  }
+};
+
+// Fixed: Defined HabitItem outside of the parent component. 
+// This resolves TypeScript "key" prop errors and improves performance.
+const HabitItem = ({ 
+  habit, 
+  index, 
+  isCompleted, 
+  onToggleHabit, 
+  onDeleteHabit 
+}: { 
+  habit: Habit, 
+  index: number, 
+  isCompleted: boolean, 
+  onToggleHabit: (id: string) => void, 
+  onDeleteHabit: (id: string) => void 
+}) => {
+  const theme = getCategoryTheme(habit.category);
+  
+  return (
+    <div 
+      style={{ animationDelay: `${index * 50}ms` }}
+      className={`group bg-white dark:bg-slate-900 p-6 rounded-[2rem] border transition-all duration-300 flex flex-col justify-between ${
+        isCompleted 
+          ? 'opacity-60 border-emerald-200 dark:border-emerald-500/40 shadow-sm' 
+          : 'border-slate-200 dark:border-slate-800 hover:border-violet-400 dark:hover:border-violet-600 hover:shadow-xl dark:hover:shadow-none'
+      }`}
+    >
+      <div className="flex justify-between items-start mb-6">
+        <div className="flex gap-4 min-w-0">
+          <button
+            onClick={() => onToggleHabit(habit.id)}
+            aria-label={isCompleted ? "Mark habit as incomplete" : "Mark habit as complete"}
+            className={`flex-shrink-0 h-14 w-14 rounded-2xl flex items-center justify-center transition-all duration-500 border-2 relative group/btn ${
+              isCompleted
+                ? 'bg-emerald-500 border-emerald-400 text-white shadow-lg shadow-emerald-200 dark:shadow-none'
+                : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 hover:border-violet-400 dark:hover:border-violet-500'
+            }`}
+          >
+            <Check 
+              size={28} 
+              strokeWidth={4} 
+              className={`transition-all duration-500 ${isCompleted ? 'scale-100 opacity-100' : 'scale-50 opacity-0'}`} 
+            />
+            {!isCompleted && (
+              <Check 
+                size={28} 
+                strokeWidth={4} 
+                className="absolute opacity-0 group-hover/btn:opacity-20 transition-opacity text-violet-600 dark:text-violet-400" 
+              />
+            )}
+          </button>
+          
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <h4 className={`font-black text-lg truncate transition-all ${isCompleted ? 'text-slate-400 dark:text-slate-500 line-through' : 'text-slate-900 dark:text-white'}`}>
+                {habit.title}
+              </h4>
+              {habit.streak > 0 && (
+                <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400 text-[10px] font-black uppercase tracking-tighter">
+                  <Flame size={10} fill="currentColor" />
+                  {habit.streak}
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${theme.bg} ${theme.color} border ${theme.border}`}>
+                {habit.category}
+              </span>
+              {habit.reminderTime && (
+                 <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 flex items-center gap-1">
+                  <Clock size={10} /> {habit.reminderTime}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <button 
+          onClick={() => onDeleteHabit(habit.id)}
+          className="opacity-0 group-hover:opacity-100 p-2 text-slate-300 dark:text-slate-600 hover:text-rose-500 dark:hover:text-rose-400 transition-all"
+        >
+          <Trash2 size={16} />
+        </button>
+      </div>
+
+      <div className="flex items-center justify-between mt-auto">
+         <div className="flex gap-1">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className={`w-1.5 h-4 rounded-full ${i < (habit.streak % 5 || (habit.streak > 0 ? 5 : 0)) ? 'bg-violet-600 dark:bg-violet-500' : 'bg-slate-100 dark:bg-slate-800'}`}></div>
+            ))}
+         </div>
+         <div className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-1">
+            {habit.frequency === Frequency.DAILY && <Repeat size={10} />}
+            {habit.frequency === Frequency.WEEKLY && <Calendar size={10} />}
+            {habit.frequency === Frequency.MONTHLY && <Calendar size={10} />}
+            {habit.frequency}
+         </div>
+      </div>
+    </div>
+  );
+};
+
 export const HabitTracker: React.FC<HabitTrackerProps> = ({ 
   habits, 
   completedHabitIds, 
@@ -17,15 +129,9 @@ export const HabitTracker: React.FC<HabitTrackerProps> = ({
   onDeleteHabit
 }) => {
   
-  const getCategoryTheme = (cat: Category) => {
-    switch(cat) {
-      case Category.HEALTH: return { color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-400/10', border: 'border-emerald-100 dark:border-emerald-400/20' };
-      case Category.WORK: return { color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-400/10', border: 'border-blue-100 dark:border-blue-400/20' };
-      case Category.LEARNING: return { color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-400/10', border: 'border-amber-100 dark:border-amber-400/20' };
-      case Category.MINDFULNESS: return { color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-50 dark:bg-purple-400/10', border: 'border-purple-100 dark:border-purple-400/20' };
-      default: return { color: 'text-slate-600 dark:text-slate-400', bg: 'bg-slate-50 dark:bg-slate-400/10', border: 'border-slate-100 dark:border-slate-400/20' };
-    }
-  };
+  const dailyHabits = habits.filter(h => h.frequency === Frequency.DAILY);
+  const weeklyHabits = habits.filter(h => h.frequency === Frequency.WEEKLY);
+  const monthlyHabits = habits.filter(h => h.frequency === Frequency.MONTHLY);
 
   if (habits.length === 0) {
     return (
@@ -40,97 +146,75 @@ export const HabitTracker: React.FC<HabitTrackerProps> = ({
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {habits.map((habit, index) => {
-        const isCompleted = completedHabitIds.includes(habit.id);
-        const theme = getCategoryTheme(habit.category);
-        
-        return (
-          <div 
-            key={habit.id}
-            style={{ animationDelay: `${index * 50}ms` }}
-            className={`group bg-white dark:bg-slate-900 p-6 rounded-[2rem] border transition-all duration-300 flex flex-col justify-between ${
-              isCompleted 
-                ? 'opacity-60 border-emerald-200 dark:border-emerald-500/40' 
-                : 'border-slate-200 dark:border-slate-800 hover:border-violet-400 dark:hover:border-violet-600 hover:shadow-xl dark:hover:shadow-none'
-            }`}
-          >
-            <div className="flex justify-between items-start mb-6">
-              <div className="flex gap-4 min-w-0">
-                <button
-                  onClick={() => onToggleHabit(habit.id)}
-                  aria-label={isCompleted ? "Mark habit as incomplete" : "Mark habit as complete"}
-                  className={`flex-shrink-0 h-14 w-14 rounded-2xl flex items-center justify-center transition-all duration-500 border-2 relative group/btn ${
-                    isCompleted
-                      ? 'bg-emerald-500 border-emerald-400 text-white shadow-lg shadow-emerald-200 dark:shadow-none'
-                      : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 hover:border-violet-400 dark:hover:border-violet-500'
-                  }`}
-                >
-                  {/* The visible checkmark when completed */}
-                  <Check 
-                    size={28} 
-                    strokeWidth={4} 
-                    className={`transition-all duration-500 ${isCompleted ? 'scale-100 opacity-100' : 'scale-50 opacity-0'}`} 
-                  />
-                  
-                  {/* The "ghost" checkmark on hover when uncompleted */}
-                  {!isCompleted && (
-                    <Check 
-                      size={28} 
-                      strokeWidth={4} 
-                      className="absolute opacity-0 group-hover/btn:opacity-20 transition-opacity text-violet-600 dark:text-violet-400" 
-                    />
-                  )}
-
-                  {/* Accessible "indicator" for empty state if needed, but the border usually suffices */}
-                </button>
-                
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h4 className={`font-black text-lg truncate transition-all ${isCompleted ? 'text-slate-400 dark:text-slate-500 line-through' : 'text-slate-900 dark:text-white'}`}>
-                      {habit.title}
-                    </h4>
-                    {habit.streak > 0 && (
-                      <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400 text-[10px] font-black uppercase tracking-tighter">
-                        <Flame size={10} fill="currentColor" />
-                        {habit.streak}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${theme.bg} ${theme.color} border ${theme.border}`}>
-                      {theme.color ? habit.category : Category.OTHER}
-                    </span>
-                    {habit.reminderTime && (
-                       <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 flex items-center gap-1">
-                        <Bell size={10} /> {habit.reminderTime}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <button 
-                onClick={() => onDeleteHabit(habit.id)}
-                className="opacity-0 group-hover:opacity-100 p-2 text-slate-300 dark:text-slate-600 hover:text-rose-500 dark:hover:text-rose-400 transition-all"
-              >
-                <Trash2 size={16} />
-              </button>
-            </div>
-
-            <div className="flex items-center justify-between mt-auto">
-               <div className="flex gap-1">
-                  {[...Array(5)].map((_, i) => (
-                    <div key={i} className={`w-1.5 h-4 rounded-full ${i < (habit.streak % 5 || (habit.streak > 0 ? 5 : 0)) ? 'bg-violet-600 dark:bg-violet-500' : 'bg-slate-100 dark:bg-slate-800'}`}></div>
-                  ))}
-               </div>
-               <div className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                  {habit.frequency} Routine
-               </div>
-            </div>
+    <div className="space-y-12 pb-12">
+      {/* Daily Section */}
+      {dailyHabits.length > 0 && (
+        <section className="space-y-6">
+          <div className="flex items-center gap-3 px-2">
+            <div className="w-1 h-6 bg-violet-600 rounded-full"></div>
+            <h3 className="font-black text-slate-400 uppercase tracking-widest text-xs">Daily Routines</h3>
+            <span className="text-[10px] font-black bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 px-2 py-0.5 rounded-md">{dailyHabits.length}</span>
           </div>
-        );
-      })}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {dailyHabits.map((habit, idx) => (
+              <HabitItem 
+                key={habit.id} 
+                habit={habit} 
+                index={idx} 
+                isCompleted={completedHabitIds.includes(habit.id)}
+                onToggleHabit={onToggleHabit}
+                onDeleteHabit={onDeleteHabit}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Weekly Section */}
+      {weeklyHabits.length > 0 && (
+        <section className="space-y-6">
+          <div className="flex items-center gap-3 px-2">
+            <div className="w-1 h-6 bg-emerald-600 rounded-full"></div>
+            <h3 className="font-black text-slate-400 uppercase tracking-widest text-xs">Weekly Architectures</h3>
+            <span className="text-[10px] font-black bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-md">{weeklyHabits.length}</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {weeklyHabits.map((habit, idx) => (
+              <HabitItem 
+                key={habit.id} 
+                habit={habit} 
+                index={idx + dailyHabits.length} 
+                isCompleted={completedHabitIds.includes(habit.id)}
+                onToggleHabit={onToggleHabit}
+                onDeleteHabit={onDeleteHabit}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Monthly Section */}
+      {monthlyHabits.length > 0 && (
+        <section className="space-y-6">
+          <div className="flex items-center gap-3 px-2">
+            <div className="w-1 h-6 bg-amber-600 rounded-full"></div>
+            <h3 className="font-black text-slate-400 uppercase tracking-widest text-xs">Monthly Milestones</h3>
+            <span className="text-[10px] font-black bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded-md">{monthlyHabits.length}</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {monthlyHabits.map((habit, idx) => (
+              <HabitItem 
+                key={habit.id} 
+                habit={habit} 
+                index={idx + dailyHabits.length + weeklyHabits.length} 
+                isCompleted={completedHabitIds.includes(habit.id)}
+                onToggleHabit={onToggleHabit}
+                onDeleteHabit={onDeleteHabit}
+              />
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 };
