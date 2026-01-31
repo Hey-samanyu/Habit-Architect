@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Plus, Minus, Trash2, Trophy, Target, Repeat, Calendar, Share2 } from 'lucide-react';
 import { Goal, Frequency } from '../types';
@@ -7,18 +8,25 @@ interface GoalTrackerProps {
   goals: Goal[];
   onUpdateProgress: (id: string, delta: number) => void;
   onDeleteGoal: (id: string) => void;
+  onOpenGoalModal: () => void;
 }
 
-export const GoalTracker: React.FC<GoalTrackerProps> = ({ goals, onUpdateProgress, onDeleteGoal }) => {
+export const GoalTracker: React.FC<GoalTrackerProps> = ({ goals, onUpdateProgress, onDeleteGoal, onOpenGoalModal }) => {
   
   if (goals.length === 0) {
      return (
-      <div className="text-center py-12 px-4 text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 transition-colors">
-         <div className="w-12 h-12 bg-slate-50 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-3">
-          <Target size={20} className="text-slate-400 dark:text-slate-500" />
+      <div className="text-center py-12 px-4 text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900 rounded-[2.5rem] border border-dashed border-slate-200 dark:border-slate-800 transition-colors">
+         <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <Target size={28} className="text-slate-400 dark:text-slate-600" />
         </div>
-        <h3 className="font-medium text-slate-800 dark:text-white mb-1">No active goals</h3>
-        <p className="text-sm text-slate-500 dark:text-slate-400">Set a target to track your progress.</p>
+        <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-2">No active goals</h3>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Set a target to track your progress.</p>
+        <button 
+          onClick={onOpenGoalModal}
+          className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded-xl font-black text-sm uppercase tracking-widest shadow-xl shadow-emerald-200 dark:shadow-none hover:bg-emerald-700 transition-all"
+        >
+          <Plus size={18} /> Establish Milestone
+        </button>
       </div>
     );
   }

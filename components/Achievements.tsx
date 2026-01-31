@@ -91,53 +91,61 @@ export const Achievements: React.FC<AchievementsProps> = ({ earnedBadgeIds }) =>
   };
 
   return (
-    <div className="flex gap-4 overflow-x-auto pb-6 -mx-2 px-2 no-scrollbar">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
       {BADGES_LIST.map((badge) => {
         const isUnlocked = earnedBadgeIds.includes(badge.id);
         
         return (
           <div 
             key={badge.id}
-            className={`flex-shrink-0 w-[160px] h-[340px] relative rounded-[2rem] flex flex-col items-center justify-start p-6 text-center transition-all duration-500 group ${
+            className={`relative group h-[300px] rounded-[2.5rem] flex flex-col items-center justify-start p-8 text-center transition-all duration-700 border ${
               isUnlocked 
-                ? 'bg-slate-900/40 dark:bg-slate-800/40 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 shadow-2xl scale-100' 
-                : 'bg-slate-100/30 dark:bg-slate-900/30 border border-slate-200/20 dark:border-slate-800/20 opacity-40'
+                ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-xl scale-100 hover:-translate-y-2' 
+                : 'bg-slate-50/50 dark:bg-slate-900/30 border-slate-100 dark:border-slate-800/50 opacity-40 grayscale pointer-events-none'
             }`}
           >
-            {/* Top Shine Effect */}
-            <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-white/10 to-transparent rounded-t-[2rem] pointer-events-none"></div>
+            {/* Background Accent glow for unlocked */}
+            {isUnlocked && (
+              <div className={`absolute inset-0 blur-[60px] opacity-10 rounded-full bg-gradient-to-tr ${badge.color} transition-opacity group-hover:opacity-20`}></div>
+            )}
 
             {/* Icon Container */}
-            <div className={`relative z-10 w-16 h-16 rounded-2xl mb-8 flex items-center justify-center transition-all duration-700 shadow-xl ${
+            <div className={`relative z-10 w-20 h-20 rounded-3xl mb-6 flex items-center justify-center transition-all duration-700 shadow-2xl ${
               isUnlocked 
-                ? `bg-gradient-to-br ${badge.color} text-white ring-4 ring-white/10 group-hover:rotate-12 group-hover:scale-110` 
-                : 'bg-slate-200/50 dark:bg-slate-700/50 text-slate-400 dark:text-slate-500'
+                ? `bg-gradient-to-br ${badge.color} text-white ring-8 ring-slate-50 dark:ring-slate-800 group-hover:rotate-6 group-hover:scale-110` 
+                : 'bg-slate-200/50 dark:bg-slate-800 text-slate-400 dark:text-slate-600'
             }`}>
-              {isUnlocked ? getIcon(badge.icon, 28) : <Lock size={24} />}
+              {isUnlocked ? getIcon(badge.icon, 32) : <Lock size={28} />}
             </div>
             
             {/* Text Content */}
-            <div className="relative z-10 mt-2 space-y-3">
-              <h4 className={`text-xl font-black leading-tight tracking-tight uppercase ${isUnlocked ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>
-                {badge.title.split(' ').map((word, i) => (
-                  <span key={i} className="block">{word}</span>
-                ))}
+            <div className="relative z-10 space-y-3">
+              <h4 className={`text-2xl font-black leading-tight tracking-tight uppercase ${isUnlocked ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-600'}`}>
+                {badge.title}
               </h4>
-              <p className={`text-xs font-bold leading-relaxed px-1 ${isUnlocked ? 'text-slate-500 dark:text-slate-400' : 'text-slate-400 dark:text-slate-600'}`}>
+              <p className={`text-xs font-bold leading-relaxed px-4 ${isUnlocked ? 'text-slate-500 dark:text-slate-400' : 'text-slate-400 dark:text-slate-700'}`}>
                 {badge.description}
               </p>
             </div>
 
-            {/* Locked Overlay/Badge logic */}
-            {!isUnlocked && (
-              <div className="mt-auto mb-2 text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-600">
-                Locked
-              </div>
-            )}
+            {/* Footer Status */}
+            <div className="mt-auto relative z-10">
+                {isUnlocked ? (
+                    <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400">
+                        <CheckCircle2 size={12} strokeWidth={3} /> Unlocked
+                    </div>
+                ) : (
+                    <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-700">
+                        Locked
+                    </div>
+                )}
+            </div>
             
-            {/* Background Accent glow for unlocked */}
-            {isUnlocked && (
-              <div className={`absolute -bottom-10 left-1/2 -translate-x-1/2 w-20 h-20 blur-[40px] opacity-20 bg-gradient-to-t ${badge.color}`}></div>
+            {/* Subtle Progress Bar Placeholder for locked items */}
+            {!isUnlocked && (
+              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-24 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                <div className="h-full bg-slate-200 dark:bg-slate-700 w-1/4"></div>
+              </div>
             )}
           </div>
         );

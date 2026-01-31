@@ -4,7 +4,7 @@ import {
   Plus, Layout, CheckCircle2, Target, Menu, Home, ListChecks, 
   LogOut, Moon, Sun, Cloud, BarChart3, Medal, Sparkles,
   Heart, Briefcase, GraduationCap, Compass, HelpCircle, 
-  Trophy, Repeat, Calendar
+  Trophy, Repeat, Calendar, Flag
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { supabase, isSupabaseConfigured } from './services/supabaseClient';
@@ -125,9 +125,7 @@ export default function App() {
     if (!isLoaded || !user) return;
 
     const todayKey = getTodayKey();
-    // Fixed: Explicitly cast todayLog to DailyLog to avoid "unknown" type issues
     const todayLog = (state.logs[todayKey] || { completedHabitIds: [] }) as DailyLog;
-    // Fixed: Cast Object.values to DailyLog[] to resolve reduce error on "unknown" property access
     const totalCompletions = (Object.values(state.logs) as DailyLog[]).reduce((acc, log) => acc + log.completedHabitIds.length, 0);
     const hasActiveHabits = state.habits.length > 0;
     const maxStreak = Math.max(0, ...state.habits.map(h => h.streak));
@@ -140,7 +138,6 @@ export default function App() {
     if (maxStreak >= 3) newBadges.push('streak_3');
     if (maxStreak >= 7) newBadges.push('streak_7');
     if (maxStreak >= 30) newBadges.push('streak_30');
-    // totalCompletions is now inferred as number from the casted reduce
     if (totalCompletions >= 50) newBadges.push('consistent');
     if (hasActiveHabits && todayLog.completedHabitIds.length === state.habits.length) newBadges.push('high_flyer');
 
@@ -278,7 +275,7 @@ export default function App() {
                 <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Milestones</h2>
                 <button onClick={() => setGoalModalOpen(true)} className="bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-emerald-200 dark:shadow-none"><Plus size={20}/> New Milestone</button>
             </div>
-            <GoalTracker goals={state.goals} onUpdateProgress={(id, delta) => setState(prev => ({ ...prev, goals: prev.goals.map(g => g.id === id ? { ...g, current: Math.max(0, g.current + delta) } : g) }))} onDeleteGoal={(id) => setState(prev => ({ ...prev, goals: prev.goals.filter(g => g.id !== id) }))} />
+            <GoalTracker goals={state.goals} onUpdateProgress={(id, delta) => setState(prev => ({ ...prev, goals: prev.goals.map(g => g.id === id ? { ...g, current: Math.max(0, g.current + delta) } : g) }))} onDeleteGoal={(id) => setState(prev => ({ ...prev, goals: prev.goals.filter(g => g.id !== id) }))} onOpenGoalModal={() => setGoalModalOpen(true)} />
           </div>
         );
       case '/insights':
@@ -291,7 +288,7 @@ export default function App() {
         return (
           <Suspense fallback={null}>
             <div className="space-y-12 animate-in fade-in duration-500">
-               <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Trophy Room</h2>
+               <h2 className="text-5xl font-black text-slate-900 dark:text-white uppercase tracking-tighter mb-10">Trophy Room</h2>
                <Achievements earnedBadgeIds={state.earnedBadges} />
             </div>
           </Suspense>
@@ -301,8 +298,13 @@ export default function App() {
           <div className="space-y-12 animate-in fade-in duration-500">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
               <h2 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white tracking-tight leading-none">Design your <br /><span className="text-violet-600">Success.</span></h2>
-              <div className="flex gap-4">
-                <button onClick={() => setHabitModalOpen(true)} className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-6 py-4 rounded-2xl font-black shadow-xl hover:scale-105 transition-all flex items-center justify-center gap-3"><Plus size={20} /> New Routine</button>
+              <div className="flex gap-3">
+                <button onClick={() => setHabitModalOpen(true)} className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-6 py-4 rounded-2xl font-black shadow-xl hover:scale-105 transition-all flex items-center justify-center gap-2">
+                  <Plus size={20} /> New Routine
+                </button>
+                <button onClick={() => setGoalModalOpen(true)} className="bg-emerald-600 text-white px-6 py-4 rounded-2xl font-black shadow-xl hover:scale-105 transition-all flex items-center justify-center gap-2">
+                  <Target size={20} /> New Milestone
+                </button>
               </div>
             </div>
 
@@ -332,7 +334,7 @@ export default function App() {
                         <h3 className="font-black text-slate-400 uppercase tracking-widest text-xs">Milestones</h3>
                     </div>
                  </div>
-                <GoalTracker goals={state.goals} onUpdateProgress={(id, delta) => setState(prev => ({ ...prev, goals: prev.goals.map(g => g.id === id ? { ...g, current: Math.max(0, g.current + delta) } : g) }))} onDeleteGoal={(id) => setState(prev => ({ ...prev, goals: prev.goals.filter(g => g.id !== id) }))} />
+                <GoalTracker goals={state.goals} onUpdateProgress={(id, delta) => setState(prev => ({ ...prev, goals: prev.goals.map(g => g.id === id ? { ...g, current: Math.max(0, g.current + delta) } : g) }))} onDeleteGoal={(id) => setState(prev => ({ ...prev, goals: prev.goals.filter(g => g.id !== id) }))} onOpenGoalModal={() => setGoalModalOpen(true)} />
               </div>
             </div>
           </div>
