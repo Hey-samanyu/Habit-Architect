@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Mail, ArrowRight, Loader2, Layout, AlertCircle, KeyRound, CheckCircle2, User as UserIcon, RotateCcw, ArrowLeft, ShieldCheck } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
 import { User } from '../types';
@@ -24,6 +24,16 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
   const [resendTimer, setResendTimer] = useState(0);
 
   const isTestAccount = email.toLowerCase().trim() === 'test@test.com';
+
+  useEffect(() => {
+    let timer: any;
+    if (resendTimer > 0) {
+      timer = setInterval(() => {
+        setResendTimer(prev => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [resendTimer]);
 
   const handleSendCode = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -82,10 +92,14 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
     if (!supabase) return;
 
     try {
+      // Correcting the verification type to match Supabase requirements
+      // Login/Magiclink uses 'email', Signups use 'signup'
+      const verifyType: 'email' | 'signup' = mode === 'signup' ? 'signup' : 'email';
+
       const { data, error } = await supabase.auth.verifyOtp({
           email,
           token: otp,
-          type: 'otp', 
+          type: verifyType, 
       });
 
       if (error) throw error;
@@ -145,7 +159,22 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
             <button type="submit" disabled={loading} className="w-full py-5 bg-violet-600 text-white rounded-2xl font-black shadow-xl hover:bg-violet-700 transition-all">
               {loading ? <Loader2 className="animate-spin mx-auto" /> : 'VERIFY & ENTER'}
             </button>
-            <button type="button" onClick={() => setStep('email')} className="w-full text-slate-400 font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 mt-4 hover:text-slate-600"><ArrowLeft size={14} /> Change Email</button>
+            
+            <div className="flex items-center justify-between mt-4">
+              <button type="button" onClick={() => setStep('email')} className="text-slate-400 font-bold text-xs uppercase tracking-widest flex items-center gap-2 hover:text-slate-600">
+                <ArrowLeft size={14} /> Back
+              </button>
+              {!isTestAccount && (
+                  <button 
+                    type="button" 
+                    onClick={() => handleSendCode()} 
+                    disabled={resendTimer > 0 || loading}
+                    className="text-violet-600 font-bold text-xs uppercase tracking-widest hover:text-violet-800 disabled:opacity-50"
+                  >
+                    {resendTimer > 0 ? `Resend in ${resendTimer}s` : "Resend Code"}
+                  </button>
+              )}
+            </div>
           </form>
         )}
       </div>
