@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useEffect, Suspense, lazy, useCallback } from 'react';
 import { 
   Plus, Layout, CheckCircle2, Target, Menu, Home, ListChecks, 
   LogOut, Moon, Sun, Cloud, BarChart3, Medal, Sparkles,
@@ -31,14 +31,15 @@ export default function App() {
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved');
   const [currentPath, setCurrentPath] = useState(window.location.pathname || '/');
 
-  // Habit Creation State
+  // Sidebar and Modal State
+  const [isSidebarOpen, setSidebarOpen] = useState(false); 
   const [isHabitModalOpen, setHabitModalOpen] = useState(false);
+  const [isGoalModalOpen, setGoalModalOpen] = useState(false);
+
+  // Form State
   const [newHabitTitle, setNewHabitTitle] = useState('');
   const [newHabitCategory, setNewHabitCategory] = useState<Category>(Category.OTHER);
   const [newHabitFrequency, setNewHabitFrequency] = useState<Frequency>(Frequency.DAILY);
-
-  // Goal Creation State
-  const [isGoalModalOpen, setGoalModalOpen] = useState(false);
   const [newGoalTitle, setNewGoalTitle] = useState('');
   const [newGoalTarget, setNewGoalTarget] = useState<number>(10);
   const [newGoalUnit, setNewGoalUnit] = useState('Units');
@@ -58,6 +59,16 @@ export default function App() {
     setSidebarOpen(false);
   };
 
+  const loadUserData = useCallback(async (userData: User) => {
+    const client = supabase; if (!client) { setIsLoaded(true); return; }
+    try {
+      const { data, error } = await client.from('user_data').select('content').eq('user_id', userData.id).single();
+      if (data?.content) setState(data.content as AppState);
+    } catch (err) {
+        console.warn("Starting fresh record for architect:", userData.email);
+    } finally { setIsLoaded(true); }
+  }, []);
+
   // Sync theme
   useEffect(() => {
     if (isDarkMode) {
@@ -69,11 +80,12 @@ export default function App() {
     }
   }, [isDarkMode]);
 
-  // Handle Auth
+  // Combined Auth Effect
   useEffect(() => {
     const client = supabase;
     if (!isSupabaseConfigured() || !client) { setIsLoaded(true); return; }
 
+    // Check current session on mount
     client.auth.getSession().then(({ data: { session } }) => {
         if (session?.user) {
             const userData: User = {
@@ -83,12 +95,14 @@ export default function App() {
             };
             setUser(userData);
             loadUserData(userData);
-            if (currentPath === '/login' || currentPath === '/') navigateTo('/dashboard');
-        } else { setIsLoaded(true); }
+            if (window.location.pathname === '/' || window.location.pathname === '/login') navigateTo('/dashboard');
+        } else {
+            setIsLoaded(true);
+        }
     });
 
-    const { data: { subscription } } = client.auth.onAuthStateChange((_event, session) => {
-        if (session?.user) {
+    const { data: { subscription } } = client.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_IN' && session?.user) {
             const userData: User = {
                 id: session.user.id,
                 email: session.user.email || '',
@@ -96,30 +110,20 @@ export default function App() {
             };
             setUser(userData);
             loadUserData(userData);
-            if (currentPath === '/login' || currentPath === '/') navigateTo('/dashboard');
-        } else if (user && user.id !== TEST_ACCOUNT_ID) {
+            navigateTo('/dashboard');
+        } else if (event === 'SIGNED_OUT') {
             setUser(null);
             setState({ habits: [], goals: [], logs: {}, earnedBadges: [] });
-            setIsLoaded(true);
-            if (currentPath !== '/') navigateTo('/');
+            navigateTo('/');
         }
     });
-    return () => subscription.unsubscribe();
-  }, [user]);
 
-  const loadUserData = async (userData: User) => {
-    const client = supabase; if (!client) return;
-    try {
-      const { data, error } = await client.from('user_data').select('content').eq('user_id', userData.id).single();
-      if (data?.content) setState(data.content as AppState);
-    } catch (err) {
-        console.warn("Starting fresh record.");
-    } finally { setIsLoaded(true); }
-  };
+    return () => subscription.unsubscribe();
+  }, [loadUserData]);
 
   // Auto-Save
   useEffect(() => {
-    if (!isLoaded || !user) return;
+    if (!isLoaded || !user || user.id === TEST_ACCOUNT_ID) return;
 
     const saveData = async () => {
       setSaveStatus('saving');
@@ -134,36 +138,63 @@ export default function App() {
         if (error) throw error;
         setSaveStatus('saved');
       } catch (err) { 
-        console.error("Cloud Save Error:", err);
+        console.error("Cloud Sync Error:", err);
         setSaveStatus('error'); 
       }
     };
-    const timeoutId = setTimeout(saveData, 2000);
+    const timeoutId = setTimeout(saveData, 3000);
     return () => clearTimeout(timeoutId);
   }, [state, isLoaded, user]);
 
-  const [isSidebarOpen, setSidebarOpen] = useState(false); 
+  const handleSignOut = async () => {
+    if (user?.id === TEST_ACCOUNT_ID) {
+      setUser(null);
+      setState({ habits: [], goals: [], logs: {}, earnedBadges: [] });
+      navigateTo('/');
+    } else {
+      await supabase?.auth.signOut();
+      // Auth listener handles state cleanup
+    }
+  };
 
   const toggleHabit = (id: string) => {
     const todayKey = getTodayKey();
     setState(prev => {
       const currentLog = prev.logs[todayKey] || { date: todayKey, completedHabitIds: [], goalProgress: {} };
       const isCompleted = currentLog.completedHabitIds.includes(id);
+      
       const newCompletedIds = isCompleted 
         ? currentLog.completedHabitIds.filter(hid => hid !== id)
         : [...currentLog.completedHabitIds, id];
 
+      // Celebrate on check
+      if (!isCompleted && typeof window !== 'undefined' && (window as any).confetti) {
+        (window as any).confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 },
+          colors: ['#7c3aed', '#10b981', '#6366f1']
+        });
+      }
+
       return {
         ...prev,
-        logs: { ...prev.logs, [todayKey]: { ...currentLog, completedHabitIds: newCompletedIds } }
+        logs: { 
+          ...prev.logs, 
+          [todayKey]: { 
+            ...currentLog, 
+            completedHabitIds: newCompletedIds 
+          } 
+        }
       };
     });
   };
 
   const addHabit = () => {
     if (!newHabitTitle.trim()) return;
+    const habitId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15);
     const newHabit: Habit = { 
-      id: crypto.randomUUID(), 
+      id: habitId,
       title: newHabitTitle, 
       category: newHabitCategory, 
       createdAt: new Date().toISOString(), 
@@ -171,18 +202,15 @@ export default function App() {
       frequency: newHabitFrequency 
     };
     setState(prev => ({ ...prev, habits: [...prev.habits, newHabit] }));
-    
-    // Reset form
     setNewHabitTitle(''); 
-    setNewHabitCategory(Category.OTHER);
-    setNewHabitFrequency(Frequency.DAILY);
     setHabitModalOpen(false);
   };
 
   const addGoal = () => {
     if (!newGoalTitle.trim()) return;
+    const goalId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15);
     const newGoal: Goal = {
-      id: crypto.randomUUID(),
+      id: goalId,
       title: newGoalTitle,
       target: newGoalTarget,
       current: 0,
@@ -190,12 +218,7 @@ export default function App() {
       frequency: newGoalFrequency
     };
     setState(prev => ({ ...prev, goals: [...prev.goals, newGoal] }));
-    
-    // Reset form
     setNewGoalTitle('');
-    setNewGoalTarget(10);
-    setNewGoalUnit('Units');
-    setNewGoalFrequency(Frequency.ONCE);
     setGoalModalOpen(false);
   };
 
@@ -261,7 +284,7 @@ export default function App() {
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-10">
               <div className="xl:col-span-2 space-y-8">
                 <AIOverview habits={state.habits} goals={state.goals} logs={state.logs} />
-                <section id="habits">
+                <section id="habits-list">
                    <div className="flex items-center gap-2 mb-6">
                      <ListChecks size={20} className="text-slate-400" />
                      <h3 className="font-black text-slate-400 uppercase tracking-widest text-xs">Today's Blueprint</h3>
@@ -286,21 +309,21 @@ export default function App() {
   };
 
   const categories = [
-    { type: Category.HEALTH, icon: Heart, color: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10' },
-    { type: Category.WORK, icon: Briefcase, color: 'text-blue-500 bg-blue-50 dark:bg-blue-500/10' },
-    { type: Category.LEARNING, icon: GraduationCap, color: 'text-amber-500 bg-amber-50 dark:bg-amber-500/10' },
-    { type: Category.MINDFULNESS, icon: Compass, color: 'text-purple-500 bg-purple-50 dark:bg-purple-500/10' },
-    { type: Category.OTHER, icon: HelpCircle, color: 'text-slate-500 bg-slate-50 dark:bg-slate-500/10' }
+    { type: Category.HEALTH, icon: Heart, color: 'text-emerald-500' },
+    { type: Category.WORK, icon: Briefcase, color: 'text-blue-500' },
+    { type: Category.LEARNING, icon: GraduationCap, color: 'text-amber-500' },
+    { type: Category.MINDFULNESS, icon: Compass, color: 'text-purple-500' },
+    { type: Category.OTHER, icon: HelpCircle, color: 'text-slate-500' }
   ];
 
   const frequencies = [
-    { type: Frequency.DAILY, label: 'Daily', icon: Repeat },
-    { type: Frequency.WEEKLY, label: 'Weekly', icon: Calendar },
-    { type: Frequency.MONTHLY, label: 'Monthly', icon: Calendar },
-    { type: Frequency.ONCE, label: 'One-time', icon: Target }
+    { type: Frequency.DAILY, label: 'Daily' },
+    { type: Frequency.WEEKLY, label: 'Weekly' },
+    { type: Frequency.MONTHLY, label: 'Monthly' },
+    { type: Frequency.ONCE, label: 'One-time' }
   ];
 
-  if (!isLoaded) return <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950"><div className="w-12 h-12 border-4 border-t-violet-600 rounded-full animate-spin"></div></div>;
+  if (!isLoaded) return <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 transition-colors"><div className="w-12 h-12 border-4 border-t-violet-600 rounded-full animate-spin"></div></div>;
   if (!user && currentPath === '/login') return <AuthScreen onAuthSuccess={(u) => { setUser(u); navigateTo('/dashboard'); }} />;
   if (!user) return <LandingPage onStart={() => navigateTo('/login')} />;
 
@@ -321,7 +344,7 @@ export default function App() {
              <button onClick={() => navigateTo('/insights')} className={`w-full flex items-center gap-4 px-5 py-4 rounded-xl font-bold transition-all ${currentPath === '/insights' ? 'bg-violet-600 text-white shadow-xl' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}><BarChart3 size={20} /> Insights</button>
              <button onClick={() => navigateTo('/trophies')} className={`w-full flex items-center gap-4 px-5 py-4 rounded-xl font-bold transition-all ${currentPath === '/trophies' ? 'bg-violet-600 text-white shadow-xl' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}><Medal size={20} /> Trophies</button>
           </nav>
-          <button onClick={() => { if(user.id === TEST_ACCOUNT_ID) setUser(null); else supabase?.auth.signOut(); }} className="flex items-center gap-4 px-5 py-3 text-slate-400 hover:text-rose-600 transition-colors text-sm font-bold w-full mt-auto"><LogOut size={18} /> Sign Out</button>
+          <button onClick={handleSignOut} className="flex items-center gap-4 px-5 py-3 text-slate-400 hover:text-rose-600 transition-colors text-sm font-bold w-full mt-auto"><LogOut size={18} /> Sign Out</button>
         </div>
       </aside>
 
@@ -348,8 +371,8 @@ export default function App() {
             </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-8 lg:p-12 blueprint-grid">
-            <div className="max-w-6xl mx-auto">
+        <main className="flex-1 overflow-y-auto p-8 lg:p-12 blueprint-grid relative">
+            <div className="max-w-6xl mx-auto pb-24">
                 {renderContent()}
             </div>
         </main>
