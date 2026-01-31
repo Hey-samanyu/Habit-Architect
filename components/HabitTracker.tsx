@@ -21,20 +21,22 @@ const getCategoryTheme = (cat: Category) => {
   }
 };
 
-// Fixed: Defined HabitItem outside of the parent component. 
-// This resolves TypeScript "key" prop errors and improves performance.
-const HabitItem = ({ 
+// Define props interface for HabitItem
+interface HabitItemProps {
+  habit: Habit;
+  index: number;
+  isCompleted: boolean;
+  onToggleHabit: (id: string) => void;
+  onDeleteHabit: (id: string) => void;
+}
+
+// Fixed: Use React.FC with HabitItemProps to resolve "key" prop errors
+const HabitItem: React.FC<HabitItemProps> = ({ 
   habit, 
   index, 
   isCompleted, 
   onToggleHabit, 
   onDeleteHabit 
-}: { 
-  habit: Habit, 
-  index: number, 
-  isCompleted: boolean, 
-  onToggleHabit: (id: string) => void, 
-  onDeleteHabit: (id: string) => void 
 }) => {
   const theme = getCategoryTheme(habit.category);
   

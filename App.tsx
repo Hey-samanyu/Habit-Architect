@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, Suspense, lazy, useCallback } from 'react';
+import React, { useState, useEffect, Suspense, lazy, useCallback, useMemo } from 'react';
 import { 
   Plus, Layout, CheckCircle2, Target, Menu, Home, ListChecks, 
   LogOut, Moon, Sun, Cloud, BarChart3, Medal, Sparkles,
@@ -9,7 +9,7 @@ import {
 import { format } from 'date-fns';
 import { supabase, isSupabaseConfigured } from './services/supabaseClient';
 
-import { Habit, Goal, Category, AppState, Frequency, User } from './types';
+import { Habit, Goal, Category, AppState, Frequency, User, DailyLog } from './types';
 import { AuthScreen, TEST_ACCOUNT_ID } from './components/AuthScreen';
 import { LandingPage } from './components/LandingPage';
 import { HabitTracker } from './components/HabitTracker';
@@ -85,7 +85,6 @@ export default function App() {
     const client = supabase;
     if (!isSupabaseConfigured() || !client) { setIsLoaded(true); return; }
 
-    // Check current session on mount
     client.auth.getSession().then(({ data: { session } }) => {
         if (session?.user) {
             const userData: User = {
@@ -121,6 +120,37 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, [loadUserData]);
 
+  // Achievement Engine - Auto-check and award badges
+  useEffect(() => {
+    if (!isLoaded || !user) return;
+
+    const todayKey = getTodayKey();
+    // Fixed: Explicitly cast todayLog to DailyLog to avoid "unknown" type issues
+    const todayLog = (state.logs[todayKey] || { completedHabitIds: [] }) as DailyLog;
+    // Fixed: Cast Object.values to DailyLog[] to resolve reduce error on "unknown" property access
+    const totalCompletions = (Object.values(state.logs) as DailyLog[]).reduce((acc, log) => acc + log.completedHabitIds.length, 0);
+    const hasActiveHabits = state.habits.length > 0;
+    const maxStreak = Math.max(0, ...state.habits.map(h => h.streak));
+    const hasCompletedGoal = state.goals.some(g => g.current >= g.target);
+
+    const newBadges: string[] = [];
+    if (hasActiveHabits) newBadges.push('first_step');
+    if (state.habits.length >= 5) newBadges.push('architect');
+    if (hasCompletedGoal) newBadges.push('goal_getter');
+    if (maxStreak >= 3) newBadges.push('streak_3');
+    if (maxStreak >= 7) newBadges.push('streak_7');
+    if (maxStreak >= 30) newBadges.push('streak_30');
+    // totalCompletions is now inferred as number from the casted reduce
+    if (totalCompletions >= 50) newBadges.push('consistent');
+    if (hasActiveHabits && todayLog.completedHabitIds.length === state.habits.length) newBadges.push('high_flyer');
+
+    const updatedBadges = [...new Set([...state.earnedBadges, ...newBadges])];
+    
+    if (updatedBadges.length !== state.earnedBadges.length) {
+      setState(prev => ({ ...prev, earnedBadges: updatedBadges }));
+    }
+  }, [state.habits, state.goals, state.logs, isLoaded, user]);
+
   // Auto-Save
   useEffect(() => {
     if (!isLoaded || !user || user.id === TEST_ACCOUNT_ID) return;
@@ -153,7 +183,6 @@ export default function App() {
       navigateTo('/');
     } else {
       await supabase?.auth.signOut();
-      // Auth listener handles state cleanup
     }
   };
 
@@ -162,12 +191,10 @@ export default function App() {
     setState(prev => {
       const currentLog = prev.logs[todayKey] || { date: todayKey, completedHabitIds: [], goalProgress: {} };
       const isCompleted = currentLog.completedHabitIds.includes(id);
-      
       const newCompletedIds = isCompleted 
         ? currentLog.completedHabitIds.filter(hid => hid !== id)
         : [...currentLog.completedHabitIds, id];
 
-      // Celebrate on check
       if (!isCompleted && typeof window !== 'undefined' && (window as any).confetti) {
         (window as any).confetti({
           particleCount: 100,
@@ -177,14 +204,20 @@ export default function App() {
         });
       }
 
+      // Update streaks logic
+      const updatedHabits = prev.habits.map(h => {
+        if (h.id === id) {
+          return { ...h, streak: !isCompleted ? h.streak + 1 : Math.max(0, h.streak - 1) };
+        }
+        return h;
+      });
+
       return {
         ...prev,
+        habits: updatedHabits,
         logs: { 
           ...prev.logs, 
-          [todayKey]: { 
-            ...currentLog, 
-            completedHabitIds: newCompletedIds 
-          } 
+          [todayKey]: { ...currentLog, completedHabitIds: newCompletedIds } 
         }
       };
     });
@@ -231,9 +264,9 @@ export default function App() {
       case '/routines':
         return (
           <div className="space-y-8 animate-in fade-in duration-500">
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center mb-4">
                 <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Your Routines</h2>
-                <button onClick={() => setHabitModalOpen(true)} className="bg-violet-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-transform hover:scale-105 active:scale-95 shadow-lg shadow-violet-200 dark:shadow-none"><Plus size={20}/> New</button>
+                <button onClick={() => setHabitModalOpen(true)} className="bg-violet-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-violet-200 dark:shadow-none"><Plus size={20}/> New</button>
             </div>
             <HabitTracker habits={state.habits} completedHabitIds={todayLog.completedHabitIds} onToggleHabit={toggleHabit} onDeleteHabit={(id) => setState(prev => ({ ...prev, habits: prev.habits.filter(h => h.id !== id) }))} />
           </div>
@@ -241,9 +274,9 @@ export default function App() {
       case '/milestones':
         return (
           <div className="space-y-8 animate-in fade-in duration-500">
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center mb-4">
                 <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Milestones</h2>
-                <button onClick={() => setGoalModalOpen(true)} className="bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-transform hover:scale-105 active:scale-95 shadow-lg shadow-emerald-200 dark:shadow-none"><Plus size={20}/> New Milestone</button>
+                <button onClick={() => setGoalModalOpen(true)} className="bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-emerald-200 dark:shadow-none"><Plus size={20}/> New Milestone</button>
             </div>
             <GoalTracker goals={state.goals} onUpdateProgress={(id, delta) => setState(prev => ({ ...prev, goals: prev.goals.map(g => g.id === id ? { ...g, current: Math.max(0, g.current + delta) } : g) }))} onDeleteGoal={(id) => setState(prev => ({ ...prev, goals: prev.goals.filter(g => g.id !== id) }))} />
           </div>
@@ -257,13 +290,13 @@ export default function App() {
       case '/trophies':
         return (
           <Suspense fallback={null}>
-            <div className="space-y-8 animate-in fade-in duration-500">
+            <div className="space-y-12 animate-in fade-in duration-500">
                <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Trophy Room</h2>
                <Achievements earnedBadgeIds={state.earnedBadges} />
             </div>
           </Suspense>
         );
-      default: // Dashboard / Overview
+      default: // Dashboard
         return (
           <div className="space-y-12 animate-in fade-in duration-500">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
@@ -274,7 +307,7 @@ export default function App() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-800 flex flex-col gap-4 shadow-sm transition-colors group hover:border-emerald-200 dark:hover:border-emerald-900/40">
+              <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-800 flex flex-col gap-4 shadow-sm transition-colors group">
                 <CheckCircle2 className="text-emerald-500 group-hover:scale-110 transition-transform" size={32} />
                 <span className="text-4xl font-black dark:text-white">{percentage}%</span>
                 <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Daily Trajectory</p>
@@ -284,10 +317,10 @@ export default function App() {
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-10">
               <div className="xl:col-span-2 space-y-8">
                 <AIOverview habits={state.habits} goals={state.goals} logs={state.logs} />
-                <section id="habits-list">
-                   <div className="flex items-center gap-2 mb-6">
+                <section id="habits-list" className="space-y-6">
+                   <div className="flex items-center gap-2">
                      <ListChecks size={20} className="text-slate-400" />
-                     <h3 className="font-black text-slate-400 uppercase tracking-widest text-xs">Today's Blueprint</h3>
+                     <h3 className="font-black text-slate-400 uppercase tracking-widest text-xs">Structural Blueprint</h3>
                    </div>
                   <HabitTracker habits={state.habits} completedHabitIds={todayLog.completedHabitIds} onToggleHabit={toggleHabit} onDeleteHabit={(id) => setState(prev => ({ ...prev, habits: prev.habits.filter(h => h.id !== id) }))} />
                 </section>
@@ -298,7 +331,6 @@ export default function App() {
                         <Target size={20} className="text-slate-400" />
                         <h3 className="font-black text-slate-400 uppercase tracking-widest text-xs">Milestones</h3>
                     </div>
-                    <button onClick={() => setGoalModalOpen(true)} className="text-violet-600 hover:text-violet-700 font-black text-[10px] uppercase tracking-widest">Add New</button>
                  </div>
                 <GoalTracker goals={state.goals} onUpdateProgress={(id, delta) => setState(prev => ({ ...prev, goals: prev.goals.map(g => g.id === id ? { ...g, current: Math.max(0, g.current + delta) } : g) }))} onDeleteGoal={(id) => setState(prev => ({ ...prev, goals: prev.goals.filter(g => g.id !== id) }))} />
               </div>
@@ -309,11 +341,11 @@ export default function App() {
   };
 
   const categories = [
-    { type: Category.HEALTH, icon: Heart, color: 'text-emerald-500' },
-    { type: Category.WORK, icon: Briefcase, color: 'text-blue-500' },
-    { type: Category.LEARNING, icon: GraduationCap, color: 'text-amber-500' },
-    { type: Category.MINDFULNESS, icon: Compass, color: 'text-purple-500' },
-    { type: Category.OTHER, icon: HelpCircle, color: 'text-slate-500' }
+    { type: Category.HEALTH, icon: Heart },
+    { type: Category.WORK, icon: Briefcase },
+    { type: Category.LEARNING, icon: GraduationCap },
+    { type: Category.MINDFULNESS, icon: Compass },
+    { type: Category.OTHER, icon: HelpCircle }
   ];
 
   const frequencies = [
@@ -328,7 +360,7 @@ export default function App() {
   if (!user) return <LandingPage onStart={() => navigateTo('/login')} />;
 
   return (
-    <div id="root-container" className="flex h-screen bg-slate-50 dark:bg-slate-950 transition-colors">
+    <div id="root-container" className="flex h-screen bg-slate-50 dark:bg-slate-950 transition-colors overflow-hidden">
       {isSidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
       
       <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transform lg:relative lg:translate-x-0 transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
@@ -338,7 +370,7 @@ export default function App() {
             <h1 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Habit<span className="text-violet-500">Arch</span></h1>
           </div>
           <nav className="space-y-2 flex-1">
-             <button onClick={() => navigateTo('/dashboard')} className={`w-full flex items-center gap-4 px-5 py-4 rounded-xl font-bold transition-all ${currentPath === '/dashboard' ? 'bg-violet-600 text-white shadow-xl' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}><Home size={20} /> Vision</button>
+             <button onClick={() => navigateTo('/dashboard')} className={`w-full flex items-center gap-4 px-5 py-4 rounded-xl font-bold transition-all ${currentPath === '/dashboard' || currentPath === '/' ? 'bg-violet-600 text-white shadow-xl' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}><Home size={20} /> Vision</button>
              <button onClick={() => navigateTo('/routines')} className={`w-full flex items-center gap-4 px-5 py-4 rounded-xl font-bold transition-all ${currentPath === '/routines' ? 'bg-violet-600 text-white shadow-xl' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}><ListChecks size={20} /> Routines</button>
              <button onClick={() => navigateTo('/milestones')} className={`w-full flex items-center gap-4 px-5 py-4 rounded-xl font-bold transition-all ${currentPath === '/milestones' ? 'bg-violet-600 text-white shadow-xl' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}><Target size={20} /> Milestones</button>
              <button onClick={() => navigateTo('/insights')} className={`w-full flex items-center gap-4 px-5 py-4 rounded-xl font-bold transition-all ${currentPath === '/insights' ? 'bg-violet-600 text-white shadow-xl' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}><BarChart3 size={20} /> Insights</button>
@@ -349,7 +381,7 @@ export default function App() {
       </aside>
 
       <div className="flex-1 flex flex-col h-full overflow-hidden">
-        <header className="h-20 flex items-center justify-between px-8 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
+        <header className="h-20 flex items-center justify-between px-8 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shrink-0">
             <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 text-slate-600 dark:text-white"><Menu /></button>
             <div className="flex items-center gap-6 ml-auto">
                 <div className="hidden sm:flex items-center gap-2">
@@ -363,10 +395,10 @@ export default function App() {
                         </div>
                     )}
                 </div>
-                <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm active:scale-95 transition-transform">{isDarkMode ? <Sun size={18} /> : <Moon size={18} />}</button>
+                <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm transition-transform">{isDarkMode ? <Sun size={18} /> : <Moon size={18} />}</button>
                 <div className="flex items-center gap-3 pl-4 border-l border-slate-200 dark:border-slate-700">
                     <span className="hidden sm:inline font-bold text-sm text-slate-700 dark:text-slate-200">{user.name}</span>
-                    <div className="w-10 h-10 bg-violet-600 rounded-xl flex items-center justify-center text-white font-black shadow-lg shadow-violet-200 dark:shadow-none">{user.name[0]}</div>
+                    <div className="w-10 h-10 bg-violet-600 rounded-xl flex items-center justify-center text-white font-black">{user.name[0]}</div>
                 </div>
             </div>
         </header>
@@ -385,21 +417,7 @@ export default function App() {
           <div className="space-y-8">
               <div className="space-y-2">
                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 ml-1">Routine Label</label>
-                <input value={newHabitTitle} onChange={e => setNewHabitTitle(e.target.value)} placeholder="e.g. Deep Work Session" className="w-full bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl font-bold border-2 border-slate-100 dark:border-slate-700 focus:border-violet-600 outline-none text-slate-900 dark:text-white shadow-inner transition-all" autoFocus />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 ml-1">Structural Category</label>
-                <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-                  {categories.map((cat) => {
-                    const Icon = cat.icon;
-                    return (
-                      <button key={cat.type} onClick={() => setNewHabitCategory(cat.type)} className={`flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all gap-2 group ${newHabitCategory === cat.type ? 'bg-violet-600 border-violet-600 text-white shadow-lg' : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-violet-300'}`}>
-                        <Icon size={20} className={newHabitCategory === cat.type ? 'text-white' : ''} />
-                        <span className="text-[9px] font-black uppercase tracking-tighter truncate w-full text-center">{cat.type}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+                <input value={newHabitTitle} onChange={e => setNewHabitTitle(e.target.value)} placeholder="e.g. Morning Meditation" className="w-full bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl font-bold border-2 border-slate-100 dark:border-slate-700 focus:border-violet-600 outline-none text-slate-900 dark:text-white" autoFocus />
               </div>
               <div className="space-y-2">
                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 ml-1">Frequency Cycle</label>
@@ -411,8 +429,21 @@ export default function App() {
                   ))}
                 </div>
               </div>
-              <button onClick={addHabit} disabled={!newHabitTitle.trim()} className="w-full bg-violet-600 disabled:bg-slate-300 dark:disabled:bg-slate-800 disabled:opacity-50 text-white py-5 rounded-2xl font-black shadow-xl shadow-violet-200 dark:shadow-none hover:bg-violet-700 hover:scale-[1.02] transition-all flex items-center justify-center gap-3">
-                <Plus size={24} strokeWidth={3} /> ESTABLISH SYSTEM
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 ml-1">Category</label>
+                <div className="grid grid-cols-5 gap-2">
+                  {categories.map((cat) => {
+                    const Icon = cat.icon;
+                    return (
+                      <button key={cat.type} onClick={() => setNewHabitCategory(cat.type)} className={`flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all gap-2 ${newHabitCategory === cat.type ? 'bg-violet-600 border-violet-600 text-white shadow-lg' : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-violet-300'}`}>
+                        <Icon size={20} />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <button onClick={addHabit} disabled={!newHabitTitle.trim()} className="w-full bg-violet-600 disabled:bg-slate-300 text-white py-5 rounded-2xl font-black shadow-xl hover:bg-violet-700 transition-all flex items-center justify-center gap-3">
+                <Plus size={24} strokeWidth={3} /> ESTABLISH ROUTINE
               </button>
           </div>
       </Modal>
@@ -422,7 +453,7 @@ export default function App() {
           <div className="space-y-6">
               <div className="space-y-2">
                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Milestone Name</label>
-                <input value={newGoalTitle} onChange={e => setNewGoalTitle(e.target.value)} placeholder="e.g. Read 500 Pages" className="w-full bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl font-bold border-2 border-slate-100 dark:border-slate-700 focus:border-emerald-600 outline-none text-slate-900 dark:text-white" autoFocus />
+                <input value={newGoalTitle} onChange={e => setNewGoalTitle(e.target.value)} placeholder="e.g. Read 500 Pages" className="w-full bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl font-bold border-2 border-slate-100 dark:border-slate-700 focus:border-emerald-600 outline-none text-slate-900 dark:text-white" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -434,17 +465,7 @@ export default function App() {
                     <input value={newGoalUnit} onChange={e => setNewGoalUnit(e.target.value)} placeholder="e.g. Pages" className="w-full bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl font-bold border-2 border-slate-100 dark:border-slate-700 focus:border-emerald-600 outline-none text-slate-900 dark:text-white" />
                 </div>
               </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 ml-1">Tracking Type</label>
-                <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200 dark:border-slate-700">
-                  {frequencies.map((freq) => (
-                    <button key={freq.type} onClick={() => setNewGoalFrequency(freq.type)} className={`flex-1 py-3 text-[10px] font-black rounded-xl transition-all ${newGoalFrequency === freq.type ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'}`}>
-                      {freq.label.toUpperCase()}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <button onClick={addGoal} disabled={!newGoalTitle.trim()} className="w-full bg-emerald-600 disabled:bg-slate-300 dark:disabled:bg-slate-800 disabled:opacity-50 text-white py-5 rounded-2xl font-black shadow-xl shadow-emerald-200 dark:shadow-none hover:bg-emerald-700 hover:scale-[1.02] transition-all flex items-center justify-center gap-3">
+              <button onClick={addGoal} disabled={!newGoalTitle.trim()} className="w-full bg-emerald-600 disabled:bg-slate-300 text-white py-5 rounded-2xl font-black shadow-xl hover:bg-emerald-700 transition-all flex items-center justify-center gap-3">
                 <Trophy size={20} /> SET MILESTONE
               </button>
           </div>
