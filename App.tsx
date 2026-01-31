@@ -2,7 +2,7 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { 
   Plus, Layout, CheckCircle2, Target, Menu, Home, ListChecks, 
-  LogOut, Moon, Sun, CloudCheck, Cloud, BarChart3, Medal, Sparkles
+  LogOut, Moon, Sun, Cloud, BarChart3, Medal, Sparkles
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { supabase, isSupabaseConfigured } from './services/supabaseClient';
@@ -261,7 +261,7 @@ export default function App() {
                         </div>
                     ) : (
                         <div className="flex items-center gap-2 text-slate-400">
-                            <CloudCheck size={16} /> <span className="text-[10px] font-black uppercase tracking-widest">Saved</span>
+                            <CheckCircle2 size={16} /> <span className="text-[10px] font-black uppercase tracking-widest">Saved</span>
                         </div>
                     )}
                 </div>
