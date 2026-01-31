@@ -4,11 +4,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Layout, Sparkles, Brain, ArrowRight, Zap, Shield, Trophy, 
   ChevronRight, Check, MousePointer2, Layers, 
-  Fingerprint, Compass, Maximize, ChevronLeft, ListChecks, Target, Plus
+  Fingerprint, Compass, Maximize, ChevronLeft, ListChecks, Target, Plus, Play
 } from 'lucide-react';
 
 interface LandingPageProps {
   onStart: () => void;
+  onDemo: () => void;
 }
 
 const FLOW_STEPS = [
@@ -38,7 +39,7 @@ const FLOW_STEPS = [
   }
 ];
 
-export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
+export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onDemo }) => {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [isHabitTicked, setIsHabitTicked] = useState(false);
   const [activeStep, setActiveStep] = useState(0);
@@ -83,12 +84,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
             </h1>
           </div>
           
-          <button 
-            onClick={onStart}
-            className="bg-slate-900 text-white px-8 py-3 rounded-xl font-black text-sm transition-all hover:bg-slate-800 hover:scale-105 active:scale-95 shadow-xl"
-          >
-            Enter Dashboard
-          </button>
+          <div className="flex items-center gap-4">
+            <button 
+                onClick={onDemo}
+                className="hidden md:flex items-center gap-2 px-6 py-3 text-slate-600 hover:text-slate-900 font-black text-sm uppercase tracking-widest transition-all hover:bg-slate-100 rounded-xl"
+            >
+                <Play size={16} fill="currentColor" /> Try Live Demo
+            </button>
+            <button 
+                onClick={onStart}
+                className="bg-slate-900 text-white px-8 py-3 rounded-xl font-black text-sm transition-all hover:bg-slate-800 hover:scale-105 active:scale-95 shadow-xl"
+            >
+                Login / Signup
+            </button>
+          </div>
         </div>
       </nav>
 
@@ -119,13 +128,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
               The world's first habit design environment built with architectural precision and world-class AI coaching.
             </p>
 
-            <div className="flex flex-col sm:flex-row items-center gap-6 pt-4">
+            <div className="flex flex-col sm:flex-row items-center gap-4 pt-4">
               <button 
                 onClick={onStart}
                 className="group relative w-full sm:w-auto px-10 py-6 bg-violet-600 text-white rounded-[2rem] font-black text-2xl shadow-2xl shadow-violet-200 transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-4 overflow-hidden"
               >
                 Begin Construction
                 <ArrowRight className="group-hover:translate-x-2 transition-transform" />
+              </button>
+              <button 
+                onClick={onDemo}
+                className="w-full sm:w-auto px-10 py-6 bg-white text-slate-900 border-2 border-slate-200 rounded-[2rem] font-black text-2xl transition-all hover:bg-slate-50 hover:border-slate-300 active:scale-95 flex items-center justify-center gap-4"
+              >
+                Try Demo
               </button>
             </div>
           </div>

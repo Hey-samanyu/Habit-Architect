@@ -6,7 +6,7 @@ import {
   Heart, Briefcase, GraduationCap, Compass, HelpCircle, 
   Trophy, Repeat, Calendar, Flag
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, subDays } from 'date-fns';
 import { supabase, isSupabaseConfigured } from './services/supabaseClient';
 
 import { Habit, Goal, Category, AppState, Frequency, User, DailyLog } from './types';
@@ -181,6 +181,43 @@ export default function App() {
     } else {
       await supabase?.auth.signOut();
     }
+  };
+
+  const handleStartDemo = () => {
+    // Populate demo data
+    const demoHabits: Habit[] = [
+        { id: 'h1', title: 'Deep Work Session', category: Category.WORK, streak: 12, frequency: Frequency.DAILY, createdAt: subDays(new Date(), 30).toISOString() },
+        { id: 'h2', title: '5km Run', category: Category.HEALTH, streak: 5, frequency: Frequency.DAILY, createdAt: subDays(new Date(), 20).toISOString() },
+        { id: 'h3', title: 'Meditation', category: Category.MINDFULNESS, streak: 21, frequency: Frequency.DAILY, createdAt: subDays(new Date(), 40).toISOString() },
+        { id: 'h4', title: 'Skill Study', category: Category.LEARNING, streak: 3, frequency: Frequency.DAILY, createdAt: subDays(new Date(), 10).toISOString() },
+    ];
+    
+    const demoGoals: Goal[] = [
+        { id: 'g1', title: 'Read "Atomic Habits"', target: 320, current: 245, unit: 'Pages', frequency: Frequency.ONCE },
+        { id: 'g2', title: 'Launch Side Project', target: 10, current: 7, unit: 'Modules', frequency: Frequency.ONCE }
+    ];
+
+    const todayKey = getTodayKey();
+    const demoLogs: Record<string, DailyLog> = {
+        [todayKey]: { date: todayKey, completedHabitIds: ['h1', 'h3'], goalProgress: {} },
+        [format(subDays(new Date(), 1), 'yyyy-MM-dd')]: { date: todayKey, completedHabitIds: ['h1', 'h2', 'h3', 'h4'], goalProgress: {} },
+        [format(subDays(new Date(), 2), 'yyyy-MM-dd')]: { date: todayKey, completedHabitIds: ['h1', 'h3'], goalProgress: {} }
+    };
+
+    setState({
+        habits: demoHabits,
+        goals: demoGoals,
+        logs: demoLogs,
+        earnedBadges: ['first_step', 'streak_3', 'streak_7', 'architect']
+    });
+
+    setUser({
+        id: TEST_ACCOUNT_ID,
+        email: 'demo@habitarch.com',
+        name: 'Demo Architect'
+    });
+
+    navigateTo('/dashboard');
   };
 
   const toggleHabit = (id: string) => {
@@ -359,7 +396,7 @@ export default function App() {
 
   if (!isLoaded) return <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 transition-colors"><div className="w-12 h-12 border-4 border-t-violet-600 rounded-full animate-spin"></div></div>;
   if (!user && currentPath === '/login') return <AuthScreen onAuthSuccess={(u) => { setUser(u); navigateTo('/dashboard'); }} />;
-  if (!user) return <LandingPage onStart={() => navigateTo('/login')} />;
+  if (!user) return <LandingPage onStart={() => navigateTo('/login')} onDemo={handleStartDemo} />;
 
   return (
     <div id="root-container" className="flex h-screen bg-slate-50 dark:bg-slate-950 transition-colors overflow-hidden">
