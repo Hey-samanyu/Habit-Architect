@@ -8,7 +8,8 @@ interface AuthScreenProps {
   onAuthSuccess: (user: User) => void;
 }
 
-// Fixed ID for the test account so it always finds the same data in your Supabase
+// This is the "Key" that opens your database for the test account.
+// Match this ID in your Supabase SQL Policy.
 export const TEST_ACCOUNT_ID = '77777777-7777-7777-7777-777777777777';
 
 export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
@@ -29,17 +30,16 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
     setLoading(true);
     setError(null);
 
-    // BYPASS: If they use the test email, don't ask Supabase to send an email.
     if (isTestAccount) {
         setTimeout(() => {
             setStep('otp');
             setLoading(false);
-        }, 300);
+        }, 400);
         return;
     }
 
     if (!isSupabaseConfigured() || !supabase) {
-        setError("Database not connected.");
+        setError("Database connection missing.");
         setLoading(false);
         return;
     }
@@ -68,8 +68,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
     setLoading(true);
     setError(null);
 
-    // BYPASS: If test email, let them in instantly with any code.
     if (isTestAccount) {
+        // Log in with the Virtual Cloud ID
         onAuthSuccess({
             id: TEST_ACCOUNT_ID,
             email: 'test@test.com',
@@ -82,11 +82,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
     if (!supabase) return;
 
     try {
-      // Normal users must verify with the real code from their email.
       const { data, error } = await supabase.auth.verifyOtp({
           email,
           token: otp,
-          type: 'otp', // or try 'signup'/'magiclink' based on mode
+          type: 'otp', 
       });
 
       if (error) throw error;
@@ -113,7 +112,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
             <Layout className="text-white" size={32} />
           </div>
           <h1 className="text-3xl font-black text-slate-900 uppercase">Habit<span className="text-violet-600">Architect</span></h1>
-          <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px] mt-2">Elite System Tracking</p>
+          <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px] mt-2">Professional System Tracking</p>
         </div>
 
         {error && (
@@ -140,13 +139,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
           <form onSubmit={handleVerifyCode} className="space-y-6">
             <div className="text-center mb-4">
                 <p className="text-slate-500 font-bold text-sm">Enter the code sent to {email}</p>
-                {isTestAccount && <p className="text-violet-600 font-black text-xs uppercase mt-1">Test Mode: Enter any 6 numbers</p>}
+                {isTestAccount && <p className="text-violet-600 font-black text-xs uppercase mt-1 animate-pulse">Test Mode Active: Instant Access</p>}
             </div>
             <input type="text" required maxLength={6} value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g,''))} className="w-full py-5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-violet-600 font-black text-3xl tracking-[0.5em] text-center" placeholder="000000" />
             <button type="submit" disabled={loading} className="w-full py-5 bg-violet-600 text-white rounded-2xl font-black shadow-xl hover:bg-violet-700 transition-all">
               {loading ? <Loader2 className="animate-spin mx-auto" /> : 'VERIFY & ENTER'}
             </button>
-            <button type="button" onClick={() => setStep('email')} className="w-full text-slate-400 font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2"><ArrowLeft size={14} /> Back to email</button>
+            <button type="button" onClick={() => setStep('email')} className="w-full text-slate-400 font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 mt-4 hover:text-slate-600"><ArrowLeft size={14} /> Change Email</button>
           </form>
         )}
       </div>

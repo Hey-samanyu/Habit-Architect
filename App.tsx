@@ -70,7 +70,6 @@ export default function App() {
     const client = supabase;
     if (!isSupabaseConfigured() || !client) { setIsLoaded(true); return; }
 
-    // Check for real login
     client.auth.getSession().then(({ data: { session } }) => {
         if (session?.user) {
              const userData: User = {
@@ -107,10 +106,10 @@ export default function App() {
   const loadUserData = async (userData: User) => {
     const client = supabase; if (!client) return;
     try {
-      const { data } = await client.from('user_data').select('content').eq('user_id', userData.id).single();
+      const { data, error } = await client.from('user_data').select('content').eq('user_id', userData.id).single();
       if (data?.content) setState(data.content as AppState);
     } catch (err) {
-        console.warn("New user, creating record on first save.");
+        console.warn("Could not fetch data from cloud. Starting fresh.");
     } finally { setIsLoaded(true); }
   };
 
@@ -121,13 +120,16 @@ export default function App() {
       setSaveStatus('saving');
       const client = supabase; if (!client) return;
       try {
-        await client.from('user_data').upsert({ 
+        const { error } = await client.from('user_data').upsert({ 
             user_id: user.id, 
             content: state, 
             updated_at: new Date().toISOString() 
         }, { onConflict: 'user_id' });
+        
+        if (error) throw error;
         setSaveStatus('saved');
       } catch (err) { 
+        console.error("Cloud Save Failed:", err);
         setSaveStatus('error'); 
       }
     };
