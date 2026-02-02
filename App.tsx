@@ -4,7 +4,7 @@ import {
   Plus, Layout, CheckCircle2, Target, Menu, Home, ListChecks, 
   LogOut, Moon, Sun, Cloud, BarChart3, Medal, Sparkles,
   Heart, Briefcase, GraduationCap, Compass, HelpCircle, 
-  Trophy, Repeat, Calendar, Flag, ChevronDown, Rocket, Share2
+  Trophy, Repeat, Calendar, Flag, ChevronDown, Rocket, Share2, Timer
 } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 import { supabase, isSupabaseConfigured } from './services/supabaseClient';
@@ -16,6 +16,7 @@ import { HabitTracker } from './components/HabitTracker';
 import { GoalTracker } from './components/GoalTracker';
 import { AIOverview } from './components/AIOverview';
 import { Modal } from './components/UIComponents';
+import { FocusMode } from './components/FocusMode';
 
 // Lazy loaded modules for performance
 const Analytics = lazy(() => import('./components/Analytics').then(m => ({ default: m.Analytics })));
@@ -43,6 +44,7 @@ export default function App() {
   const [isHabitModalOpen, setHabitModalOpen] = useState(false);
   const [isGoalModalOpen, setGoalModalOpen] = useState(false);
   const [completedGoalCelebration, setCompletedGoalCelebration] = useState<Goal | null>(null);
+  const [activeFocusHabit, setActiveFocusHabit] = useState<Habit | null>(null);
 
   // Form State
   const [newHabitTitle, setNewHabitTitle] = useState('');
@@ -189,7 +191,6 @@ export default function App() {
   };
 
   const handleStartDemo = () => {
-    // Populate high-fidelity demo data requested for Sam
     const demoHabits: Habit[] = [
         { id: 'h1', title: 'Run 5km', category: Category.HEALTH, streak: 12, frequency: Frequency.DAILY, createdAt: subDays(new Date(), 30).toISOString() },
         { id: 'h2', title: 'Read 20 Pages', category: Category.LEARNING, streak: 21, frequency: Frequency.DAILY, createdAt: subDays(new Date(), 40).toISOString() },
@@ -217,7 +218,6 @@ export default function App() {
         habits: demoHabits,
         goals: demoGoals,
         logs: demoLogs,
-        // specifically requested NO goals ever completed badges (exclude 'goal_getter')
         earnedBadges: ['first_step', 'streak_3', 'streak_7', 'architect']
     });
 
@@ -275,7 +275,6 @@ export default function App() {
           const isNowCompleted = newCurrent >= g.target;
 
           if (!wasCompleted && isNowCompleted) {
-            // Trigger celebration
             setCompletedGoalCelebration(g);
             if (typeof window !== 'undefined' && (window as any).confetti) {
               (window as any).confetti({
@@ -332,22 +331,22 @@ export default function App() {
     const percentage = state.habits.length > 0 ? Math.round((todayLog.completedHabitIds.length / state.habits.length) * 100) : 0;
 
     switch(currentPath) {
-      case '/routines':
+      case '/habits':
         return (
           <div className="space-y-8 animate-in fade-in duration-500">
             <div className="flex justify-between items-center mb-4">
-                <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Your Routines</h2>
+                <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Your Habits</h2>
                 <button onClick={() => setHabitModalOpen(true)} className="bg-violet-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-violet-200 dark:shadow-none transition-all hover:scale-105 active:scale-95"><Plus size={20}/> New</button>
             </div>
-            <HabitTracker habits={state.habits} completedHabitIds={todayLog.completedHabitIds} onToggleHabit={toggleHabit} onDeleteHabit={(id) => setState(prev => ({ ...prev, habits: prev.habits.filter(h => h.id !== id) }))} />
+            <HabitTracker habits={state.habits} completedHabitIds={todayLog.completedHabitIds} onToggleHabit={toggleHabit} onDeleteHabit={(id) => setState(prev => ({ ...prev, habits: prev.habits.filter(h => h.id !== id) }))} onFocusHabit={(h) => setActiveFocusHabit(h)} />
           </div>
         );
-      case '/milestones':
+      case '/goals':
         return (
           <div className="space-y-8 animate-in fade-in duration-500">
             <div className="flex justify-between items-center mb-4">
-                <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Milestones</h2>
-                <button onClick={() => setGoalModalOpen(true)} className="bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-emerald-200 dark:shadow-none transition-all hover:scale-105 active:scale-95"><Plus size={20}/> New Milestone</button>
+                <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Goals</h2>
+                <button onClick={() => setGoalModalOpen(true)} className="bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-emerald-200 dark:shadow-none transition-all hover:scale-105 active:scale-95"><Plus size={20}/> New Goal</button>
             </div>
             <GoalTracker goals={state.goals} onUpdateProgress={handleUpdateGoalProgress} onDeleteGoal={(id) => setState(prev => ({ ...prev, goals: prev.goals.filter(g => g.id !== id) }))} onOpenGoalModal={() => setGoalModalOpen(true)} />
           </div>
@@ -374,10 +373,10 @@ export default function App() {
               <h2 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white tracking-tight leading-none">Design your <br /><span className="text-violet-600">Success.</span></h2>
               <div className="flex gap-3">
                 <button onClick={() => setHabitModalOpen(true)} className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-6 py-4 rounded-2xl font-black shadow-xl hover:scale-105 transition-all flex items-center justify-center gap-2">
-                  <Plus size={20} /> New Routine
+                  <Plus size={20} /> New Habit
                 </button>
                 <button onClick={() => setGoalModalOpen(true)} className="bg-emerald-600 text-white px-6 py-4 rounded-2xl font-black shadow-xl hover:scale-105 transition-all flex items-center justify-center gap-2">
-                  <Target size={20} /> New Milestone
+                  <Target size={20} /> New Goal
                 </button>
               </div>
             </div>
@@ -398,14 +397,14 @@ export default function App() {
                      <ListChecks size={20} className="text-slate-400" />
                      <h3 className="font-black text-slate-400 uppercase tracking-widest text-xs">Structural Blueprint</h3>
                    </div>
-                  <HabitTracker habits={state.habits} completedHabitIds={todayLog.completedHabitIds} onToggleHabit={toggleHabit} onDeleteHabit={(id) => setState(prev => ({ ...prev, habits: prev.habits.filter(h => h.id !== id) }))} />
+                  <HabitTracker habits={state.habits} completedHabitIds={todayLog.completedHabitIds} onToggleHabit={toggleHabit} onDeleteHabit={(id) => setState(prev => ({ ...prev, habits: prev.habits.filter(h => h.id !== id) }))} onFocusHabit={(h) => setActiveFocusHabit(h)} />
                 </section>
               </div>
               <div className="xl:col-span-1">
                  <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-2">
                         <Target size={20} className="text-slate-400" />
-                        <h3 className="font-black text-slate-400 uppercase tracking-widest text-xs">Milestones</h3>
+                        <h3 className="font-black text-slate-400 uppercase tracking-widest text-xs">Goals</h3>
                     </div>
                  </div>
                 <GoalTracker goals={state.goals} onUpdateProgress={handleUpdateGoalProgress} onDeleteGoal={(id) => setState(prev => ({ ...prev, goals: prev.goals.filter(g => g.id !== id) }))} onOpenGoalModal={() => setGoalModalOpen(true)} />
@@ -447,8 +446,8 @@ export default function App() {
           </div>
           <nav className="space-y-2 flex-1">
              <button onClick={() => navigateTo('/dashboard')} className={`w-full flex items-center gap-4 px-5 py-4 rounded-xl font-bold transition-all ${currentPath === '/dashboard' || currentPath === '/' ? 'bg-violet-600 text-white shadow-xl' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}><Home size={20} /> Vision</button>
-             <button onClick={() => navigateTo('/routines')} className={`w-full flex items-center gap-4 px-5 py-4 rounded-xl font-bold transition-all ${currentPath === '/routines' ? 'bg-violet-600 text-white shadow-xl' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}><ListChecks size={20} /> Routines</button>
-             <button onClick={() => navigateTo('/milestones')} className={`w-full flex items-center gap-4 px-5 py-4 rounded-xl font-bold transition-all ${currentPath === '/milestones' ? 'bg-violet-600 text-white shadow-xl' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}><Target size={20} /> Milestones</button>
+             <button onClick={() => navigateTo('/habits')} className={`w-full flex items-center gap-4 px-5 py-4 rounded-xl font-bold transition-all ${currentPath === '/habits' ? 'bg-violet-600 text-white shadow-xl' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}><ListChecks size={20} /> Habits</button>
+             <button onClick={() => navigateTo('/goals')} className={`w-full flex items-center gap-4 px-5 py-4 rounded-xl font-bold transition-all ${currentPath === '/goals' ? 'bg-violet-600 text-white shadow-xl' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}><Target size={20} /> Goals</button>
              <button onClick={() => navigateTo('/insights')} className={`w-full flex items-center gap-4 px-5 py-4 rounded-xl font-bold transition-all ${currentPath === '/insights' ? 'bg-violet-600 text-white shadow-xl' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}><BarChart3 size={20} /> Insights</button>
              <button onClick={() => navigateTo('/trophies')} className={`w-full flex items-center gap-4 px-5 py-4 rounded-xl font-bold transition-all ${currentPath === '/trophies' ? 'bg-violet-600 text-white shadow-xl' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}><Medal size={20} /> Trophies</button>
           </nav>
@@ -489,10 +488,10 @@ export default function App() {
       <Suspense fallback={null}><KairoChat habits={state.habits} goals={state.goals} logs={state.logs} /></Suspense>
 
       {/* Habit Modal */}
-      <Modal isOpen={isHabitModalOpen} onClose={() => setHabitModalOpen(false)} title="New Routine">
+      <Modal isOpen={isHabitModalOpen} onClose={() => setHabitModalOpen(false)} title="New Habit">
           <div className="space-y-8">
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 ml-1">Routine Label</label>
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 ml-1">Habit Label</label>
                 <input value={newHabitTitle} onChange={e => setNewHabitTitle(e.target.value)} placeholder="e.g. Morning Meditation" className="w-full bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl font-bold border-2 border-slate-100 dark:border-slate-700 focus:border-violet-600 outline-none text-slate-900 dark:text-white" autoFocus />
               </div>
               <div className="space-y-2">
@@ -519,16 +518,16 @@ export default function App() {
                 </div>
               </div>
               <button onClick={addHabit} disabled={!newHabitTitle.trim()} className="w-full bg-violet-600 disabled:bg-slate-300 text-white py-5 rounded-2xl font-black shadow-xl hover:bg-violet-700 transition-all flex items-center justify-center gap-3">
-                <Plus size={24} strokeWidth={3} /> ESTABLISH ROUTINE
+                <Plus size={24} strokeWidth={3} /> ESTABLISH HABIT
               </button>
           </div>
       </Modal>
 
-      {/* Goal Modal (Milestone) */}
-      <Modal isOpen={isGoalModalOpen} onClose={() => setGoalModalOpen(false)} title="New Milestone">
+      {/* Goal Modal */}
+      <Modal isOpen={isGoalModalOpen} onClose={() => setGoalModalOpen(false)} title="New Goal">
           <div className="space-y-6">
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Milestone Name</label>
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Goal Name</label>
                 <input value={newGoalTitle} onChange={e => setNewGoalTitle(e.target.value)} placeholder="e.g. Run 50km" className="w-full bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl font-bold border-2 border-slate-100 dark:border-slate-700 focus:border-emerald-600 outline-none text-slate-900 dark:text-white" />
               </div>
 
@@ -590,13 +589,13 @@ export default function App() {
               </div>
 
               <button onClick={addGoal} disabled={!newGoalTitle.trim()} className="w-full bg-emerald-600 disabled:bg-slate-300 text-white py-5 rounded-2xl font-black shadow-xl hover:bg-emerald-700 transition-all flex items-center justify-center gap-3">
-                <Trophy size={20} /> SET MILESTONE
+                <Trophy size={20} /> SET GOAL
               </button>
           </div>
       </Modal>
 
       {/* Goal Completion Celebration Popup */}
-      <Modal isOpen={!!completedGoalCelebration} onClose={() => setCompletedGoalCelebration(null)} title="Milestone Achieved!">
+      <Modal isOpen={!!completedGoalCelebration} onClose={() => setCompletedGoalCelebration(null)} title="Goal Achieved!">
           <div className="flex flex-col items-center text-center space-y-6">
               <div className="relative">
                 <div className="absolute inset-0 bg-emerald-500 blur-2xl opacity-20 animate-pulse"></div>
@@ -607,7 +606,7 @@ export default function App() {
               
               <div className="space-y-2">
                 <h4 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">{completedGoalCelebration?.title}</h4>
-                <p className="text-slate-500 dark:text-slate-400 font-bold">Structural integrity maintained. Milestone finalized.</p>
+                <p className="text-slate-500 dark:text-slate-400 font-bold">Structural integrity maintained. Goal finalized.</p>
               </div>
 
               <div className="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-3xl border border-slate-100 dark:border-slate-700 w-full">
@@ -629,6 +628,17 @@ export default function App() {
               </button>
           </div>
       </Modal>
+
+      {/* Focus Mode Timer */}
+      <FocusMode 
+        isOpen={!!activeFocusHabit} 
+        habitTitle={activeFocusHabit?.title}
+        onClose={() => setActiveFocusHabit(null)}
+        onComplete={() => {
+          if (activeFocusHabit) toggleHabit(activeFocusHabit.id);
+          setActiveFocusHabit(null);
+        }}
+      />
     </div>
   );
 }

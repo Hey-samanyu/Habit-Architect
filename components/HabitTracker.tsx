@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Check, Trash2, Flame, Zap, Bell, Calendar, Clock, Repeat } from 'lucide-react';
+import { Check, Trash2, Flame, Zap, Bell, Calendar, Clock, Repeat, Timer } from 'lucide-react';
 import { Habit, Category, Frequency } from '../types';
 
 interface HabitTrackerProps {
@@ -8,9 +8,9 @@ interface HabitTrackerProps {
   completedHabitIds: string[];
   onToggleHabit: (id: string) => void;
   onDeleteHabit: (id: string) => void;
+  onFocusHabit: (habit: Habit) => void;
 }
 
-// Move helper to determine colors based on category outside for cleaner code
 const getCategoryTheme = (cat: Category) => {
   switch(cat) {
     case Category.HEALTH: return { color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-400/10', border: 'border-emerald-100 dark:border-emerald-400/20' };
@@ -21,22 +21,22 @@ const getCategoryTheme = (cat: Category) => {
   }
 };
 
-// Define props interface for HabitItem
 interface HabitItemProps {
   habit: Habit;
   index: number;
   isCompleted: boolean;
   onToggleHabit: (id: string) => void;
   onDeleteHabit: (id: string) => void;
+  onFocusHabit: (habit: Habit) => void;
 }
 
-// Fixed: Use React.FC with HabitItemProps to resolve "key" prop errors
 const HabitItem: React.FC<HabitItemProps> = ({ 
   habit, 
   index, 
   isCompleted, 
   onToggleHabit, 
-  onDeleteHabit 
+  onDeleteHabit,
+  onFocusHabit
 }) => {
   const theme = getCategoryTheme(habit.category);
   
@@ -46,7 +46,7 @@ const HabitItem: React.FC<HabitItemProps> = ({
       className={`group bg-white dark:bg-slate-900 p-6 rounded-[2rem] border transition-all duration-300 flex flex-col justify-between ${
         isCompleted 
           ? 'opacity-60 border-emerald-200 dark:border-emerald-500/40 shadow-sm' 
-          : 'border-slate-200 dark:border-slate-800 hover:border-violet-400 dark:hover:border-violet-600 hover:shadow-xl dark:hover:shadow-none'
+          : 'border-slate-200 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-600 hover:shadow-xl dark:hover:shadow-none'
       }`}
     >
       <div className="flex justify-between items-start mb-6">
@@ -57,7 +57,7 @@ const HabitItem: React.FC<HabitItemProps> = ({
             className={`flex-shrink-0 h-14 w-14 rounded-2xl flex items-center justify-center transition-all duration-500 border-2 relative group/btn ${
               isCompleted
                 ? 'bg-emerald-500 border-emerald-400 text-white shadow-lg shadow-emerald-200 dark:shadow-none'
-                : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 hover:border-violet-400 dark:hover:border-violet-500'
+                : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 hover:border-slate-400'
             }`}
           >
             <Check 
@@ -69,7 +69,7 @@ const HabitItem: React.FC<HabitItemProps> = ({
               <Check 
                 size={28} 
                 strokeWidth={4} 
-                className="absolute opacity-0 group-hover/btn:opacity-20 transition-opacity text-violet-600 dark:text-violet-400" 
+                className="absolute opacity-0 group-hover/btn:opacity-20 transition-opacity text-slate-900 dark:text-white" 
               />
             )}
           </button>
@@ -90,10 +90,16 @@ const HabitItem: React.FC<HabitItemProps> = ({
               <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${theme.bg} ${theme.color} border ${theme.border}`}>
                 {habit.category}
               </span>
-              {habit.reminderTime && (
-                 <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 flex items-center gap-1">
-                  <Clock size={10} /> {habit.reminderTime}
-                </span>
+              {!isCompleted && (
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onFocusHabit(habit);
+                  }}
+                  className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 text-[10px] font-black uppercase tracking-widest border border-slate-200 dark:border-slate-700 transition-colors"
+                >
+                  <Timer size={10} /> Focus
+                </button>
               )}
             </div>
           </div>
@@ -110,7 +116,7 @@ const HabitItem: React.FC<HabitItemProps> = ({
       <div className="flex items-center justify-between mt-auto">
          <div className="flex gap-1">
             {[...Array(5)].map((_, i) => (
-              <div key={i} className={`w-1.5 h-4 rounded-full ${i < (habit.streak % 5 || (habit.streak > 0 ? 5 : 0)) ? 'bg-violet-600 dark:bg-violet-500' : 'bg-slate-100 dark:bg-slate-800'}`}></div>
+              <div key={i} className={`w-1.5 h-4 rounded-full ${i < (habit.streak % 5 || (habit.streak > 0 ? 5 : 0)) ? 'bg-slate-900 dark:bg-slate-400' : 'bg-slate-100 dark:bg-slate-800'}`}></div>
             ))}
          </div>
          <div className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-1">
@@ -128,7 +134,8 @@ export const HabitTracker: React.FC<HabitTrackerProps> = ({
   habits, 
   completedHabitIds, 
   onToggleHabit,
-  onDeleteHabit
+  onDeleteHabit,
+  onFocusHabit
 }) => {
   
   const dailyHabits = habits.filter(h => h.frequency === Frequency.DAILY);
@@ -142,20 +149,19 @@ export const HabitTracker: React.FC<HabitTrackerProps> = ({
           <Zap size={28} className="text-slate-400 dark:text-slate-600" />
         </div>
         <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-2">The canvas is empty</h3>
-        <p className="text-slate-500 dark:text-slate-400 max-w-xs mx-auto">Start architecting your routines by adding your first habit.</p>
+        <p className="text-slate-500 dark:text-slate-400 max-w-xs mx-auto">Start architecting your life by adding your first habit.</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-12 pb-12">
-      {/* Daily Section */}
       {dailyHabits.length > 0 && (
         <section className="space-y-6">
           <div className="flex items-center gap-3 px-2">
-            <div className="w-1 h-6 bg-violet-600 rounded-full"></div>
-            <h3 className="font-black text-slate-400 uppercase tracking-widest text-xs">Daily Routines</h3>
-            <span className="text-[10px] font-black bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 px-2 py-0.5 rounded-md">{dailyHabits.length}</span>
+            <div className="w-1 h-6 bg-slate-900 dark:bg-slate-200 rounded-full"></div>
+            <h3 className="font-black text-slate-400 uppercase tracking-widest text-xs">Daily Habits</h3>
+            <span className="text-[10px] font-black bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded-md">{dailyHabits.length}</span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {dailyHabits.map((habit, idx) => (
@@ -166,18 +172,18 @@ export const HabitTracker: React.FC<HabitTrackerProps> = ({
                 isCompleted={completedHabitIds.includes(habit.id)}
                 onToggleHabit={onToggleHabit}
                 onDeleteHabit={onDeleteHabit}
+                onFocusHabit={onFocusHabit}
               />
             ))}
           </div>
         </section>
       )}
 
-      {/* Weekly Section */}
       {weeklyHabits.length > 0 && (
         <section className="space-y-6">
           <div className="flex items-center gap-3 px-2">
             <div className="w-1 h-6 bg-emerald-600 rounded-full"></div>
-            <h3 className="font-black text-slate-400 uppercase tracking-widest text-xs">Weekly Architectures</h3>
+            <h3 className="font-black text-slate-400 uppercase tracking-widest text-xs">Weekly Habits</h3>
             <span className="text-[10px] font-black bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-md">{weeklyHabits.length}</span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -189,18 +195,18 @@ export const HabitTracker: React.FC<HabitTrackerProps> = ({
                 isCompleted={completedHabitIds.includes(habit.id)}
                 onToggleHabit={onToggleHabit}
                 onDeleteHabit={onDeleteHabit}
+                onFocusHabit={onFocusHabit}
               />
             ))}
           </div>
         </section>
       )}
 
-      {/* Monthly Section */}
       {monthlyHabits.length > 0 && (
         <section className="space-y-6">
           <div className="flex items-center gap-3 px-2">
             <div className="w-1 h-6 bg-amber-600 rounded-full"></div>
-            <h3 className="font-black text-slate-400 uppercase tracking-widest text-xs">Monthly Milestones</h3>
+            <h3 className="font-black text-slate-400 uppercase tracking-widest text-xs">Monthly Habits</h3>
             <span className="text-[10px] font-black bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded-md">{monthlyHabits.length}</span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -212,6 +218,7 @@ export const HabitTracker: React.FC<HabitTrackerProps> = ({
                 isCompleted={completedHabitIds.includes(habit.id)}
                 onToggleHabit={onToggleHabit}
                 onDeleteHabit={onDeleteHabit}
+                onFocusHabit={onFocusHabit}
               />
             ))}
           </div>

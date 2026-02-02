@@ -107,7 +107,7 @@ export const generateDailyOverview = async (
     .map(date => {
         const log = logs[date];
         const completedCount = log.completedHabitIds.length;
-        return `${date}: ${completedCount}/${habits.length} habits`;
+        return `${date}: ${completedCount}/${habits.length} habits done`;
     })
     .join('\n');
 
@@ -117,27 +117,27 @@ export const generateDailyOverview = async (
   const goalStatus = goals.map(g => `${g.title}: ${g.current}/${g.target} ${g.unit}`).join('; ');
 
   const prompt = `
-    You are an elite productivity coach. Analyze the user's habit tracker data.
+    You are a friendly personal coach. Look at the user's progress on their goals and habits.
 
-    CONTEXT:
-    - Today: ${todayStr}
-    - Total Habits: ${habits.length}
-    - Habits Completed Today: ${completedHabitsToday.length}
-    - Active Habits List: ${activeHabitNames}
-    - Completed Today: ${completedHabitNames}
-    - Goals Status: ${goalStatus}
+    WHAT WE SEE:
+    - Today's Date: ${todayStr}
+    - Total habits to track: ${habits.length}
+    - Habits finished today: ${completedHabitsToday.length}
+    - Habits they planned: ${activeHabitNames}
+    - Habits they actually did: ${completedHabitNames}
+    - Goals they are working on: ${goalStatus}
     
-    RECENT HISTORY (Last 7 Days):
+    RECENT PROGRESS (Last 7 Days):
     ${history}
 
-    TASK:
-    Provide a brief, high-impact daily briefing (max 130 words).
-    Structure your response in 3 short paragraphs (do not label them, just separate by newlines):
-    1. **Insight**: Analyze the recent trend. Are they consistent? Is today a dip or a peak?
-    2. **Focus**: Suggest ONE specific thing to focus on right now (e.g. finishing a specific goal or maintaining a streak).
-    3. **Motivation**: A short, punchy, relevant quote or affirmation.
+    YOUR JOB:
+    Write a short and helpful update (max 100 words).
+    Make it 3 simple parts (no labels, just separate with empty lines):
+    1. **What I see**: Look at their week. Are they being steady? Is today a good day or a slow one?
+    2. **Next step**: Give them ONE simple thing to focus on right now to stay on track.
+    3. **A nice word**: A very short and happy message to keep them feeling good.
 
-    Keep the tone encouraging but analytical. Use bolding for key terms.
+    Keep it simple and encouraging. Use bold text for important bits.
   `;
 
   try {
@@ -153,7 +153,7 @@ export const generateDailyOverview = async (
     return response.text || "Could not generate analysis.";
   } catch (error) {
     console.error("Gemini API Error:", error);
-    return "Sorry, I'm having trouble analyzing your data right now. Please try again later.";
+    return "Sorry, I'm having trouble looking at your progress right now. Please try again soon.";
   }
 };
 
@@ -188,36 +188,36 @@ export const createChatSession = (
       else if (date === last3Days[1]) dayLabel = "Yesterday";
       else dayLabel = format(new Date(date), 'MMM d');
 
-      return `${dayLabel}: ${isDone ? "COMPLETED ✅" : "MISSED ⭕"}`;
+      return `${dayLabel}: ${isDone ? "FINISHED ✅" : "NOT DONE ⭕"}`;
     }).join(" | ");
 
     const isCompletedToday = logs[todayStr]?.completedHabitIds.includes(h.id);
-    const status = isCompletedToday ? 'DONE' : 'PENDING';
+    const status = isCompletedToday ? 'DONE' : 'NOT DONE';
     
     return `• ${h.title} (${h.frequency})
-      - Current Streak: ${h.streak} days
-      - Recent History: ${historyDetails}
+      - Streak: ${h.streak} days
+      - Last few days: ${historyDetails}
       - Today's Status: [${status}]`;
   }).join('\n');
 
   const goalContext = goals.map(g => {
     const percent = Math.floor((g.current / g.target) * 100);
     const remaining = Math.max(0, g.target - g.current);
-    const status = g.current >= g.target ? 'ACHIEVED 🎉' : 'IN PROGRESS';
+    const status = g.current >= g.target ? 'FINISHED! 🎉' : 'STILL WORKING ON IT';
     
     return `• ${g.title} (${g.frequency})
       - Progress: ${g.current} / ${g.target} ${g.unit} (${percent}%)
-      - Remaining to Goal: ${remaining} ${g.unit}
+      - Left to go: ${remaining} ${g.unit}
       - Status: ${status}`;
   }).join('\n');
 
   const systemInstruction = `
-    You are Kairo, a world-class habit coach and accountability partner.
+    You are Kairo, a friendly and supportive helper for people who want to stay on track with their daily goals.
     
-    YOUR MISSION:
-    Your goal is to help the user achieve 100% consistency and crush their goals.
+    YOUR JOB:
+    Help the user stay steady and finish their tasks. Be like a kind friend who wants them to do well.
     
-    USER'S DATA SNAPSHOT (Today: ${todayStr}):
+    USER'S RECENT PROGRESS (Today: ${todayStr}):
     
     === HABITS ===
     ${habitContext}
@@ -225,25 +225,25 @@ export const createChatSession = (
     === GOALS ===
     ${goalContext}
 
-    STRICT RESPONSE GUIDELINES:
-    1. **NO MARKDOWN BOLDING**: Do NOT use double asterisks (**). They break the app's display. Use emojis or CAPITALS for emphasis instead.
-    2. **STRUCTURE**: You MUST use line breaks between every distinct thought or sentence group. Never write long paragraphs.
-    3. **LENGTH**: Keep it under 150 words. Be punchy and direct.
-    4. **FORMATTING**: Use bullet points (•) for lists.
-    5. **ACTION-FIRST**: Start with specific feedback based on the data above (e.g., "You missed Meditation yesterday").
+    HOW TO TALK:
+    1. **NO BOLD TEXT**: Do NOT use double stars (**). Use emojis or ALL CAPS if you need to emphasize something.
+    2. **KEEP IT SIMPLE**: Use single line breaks between every new thought. Do not write long blocks of text.
+    3. **WORDS**: Keep it under 150 words. Be clear and kind.
+    4. **LISTS**: Use simple dots (•) for lists.
+    5. **BE HELPFUL**: Start by talking about what they did or missed (for example, "I saw you missed your meditation yesterday").
     
-    ADVICE LOGIC:
-    - If a habit status is [PENDING] for Today, tell them to do it NOW.
-    - If they missed Yesterday, ask them why or encourage them to restart the streak.
-    - If a Goal is close to completion (e.g. >80%), hype them up to finish it.
+    ADVICE:
+    - If they haven't done a habit yet today, remind them to do it now.
+    - If they missed yesterday, encourage them to start again today.
+    - If they are almost finished with a goal, cheer them on to do the last bit.
     
-    Example Response:
-    "🔥 You are crushing your Reading goal! Only 5 pages left. Finish that today.
+    Example:
+    "WOW! You are doing great with your reading goal. Only 5 pages left. You can finish that today!
     
-    • However, you missed Running yesterday and today is still PENDING.
-    • Get your shoes on and go for a 10-minute run to keep the streak alive.
+    • I saw you missed your run yesterday and haven't gone today yet.
+    • Maybe put your shoes on and go for just 10 minutes right now?
     
-    No excuses, let's get it done!"
+    You've got this, let's keep going!"
   `;
 
   // Update to 'gemini-3-flash-preview' for chat session

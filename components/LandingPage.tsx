@@ -1,6 +1,5 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-/* Import Plus icon for use in interactive demo section */
 import { 
   Layout, Sparkles, Brain, ArrowRight, Zap, Shield, Trophy, 
   ChevronRight, Check, MousePointer2, Layers, 
@@ -16,7 +15,7 @@ const FLOW_STEPS = [
   {
     id: 'design',
     title: 'Phase 01: System Design',
-    subtitle: 'Blueprint your routines',
+    subtitle: 'Blueprint your habits',
     description: 'Define your daily systems with architectural precision. Categorize by health, work, or mindfulness to build a balanced structural foundation.',
     icon: <ListChecks className="text-violet-600" size={32} />,
     color: 'bg-violet-600'
@@ -72,7 +71,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onDemo }) => 
 
   return (
     <div className="relative font-sans bg-slate-50 blueprint-grid selection:bg-violet-200">
-      {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-[60] h-24 px-6 bg-white/80 backdrop-blur-md border-b border-slate-200">
         <div className="max-w-7xl mx-auto h-full flex items-center justify-between">
           <div className="flex items-center gap-3 group cursor-pointer">
@@ -101,7 +99,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onDemo }) => 
         </div>
       </nav>
 
-      {/* Hero Section */}
       <section ref={heroRef} className="min-h-screen pt-48 pb-20 px-6 flex flex-col items-center overflow-hidden">
         <div 
           className="absolute w-[800px] h-[800px] bg-violet-500/10 rounded-full blur-[140px] pointer-events-none transition-transform duration-1000 ease-out z-0"
@@ -120,7 +117,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onDemo }) => 
             <h2 className="text-7xl md:text-8xl font-black tracking-tighter leading-[0.85] text-slate-900">
               Stop tracking.<br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 via-indigo-600 to-fuchsia-600">
-                Design Routines.
+                Design Habits.
               </span>
             </h2>
 
@@ -215,7 +212,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onDemo }) => 
         </div>
       </section>
 
-      {/* New Interactive Flow Carousel */}
       <section className="py-40 px-6 bg-slate-900 text-white relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-b from-slate-50 to-transparent opacity-10"></div>
         <div className="max-w-7xl mx-auto">
@@ -255,14 +251,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onDemo }) => 
               </div>
             </div>
 
-            {/* Visual Preview Side */}
             <div className="lg:w-1/2 relative h-[600px] w-full flex items-center justify-center">
               <div className="absolute -inset-20 bg-violet-600/20 rounded-full blur-[120px] animate-pulse"></div>
               
               <div className="relative w-full max-w-md aspect-[4/5] bg-white rounded-[3rem] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] overflow-hidden border-8 border-slate-800 transition-all duration-700">
-                {/* Internal App Mockup Screen */}
                 <div className="absolute inset-0 bg-slate-50 p-8 flex flex-col gap-6">
-                  {/* Mock Nav */}
                   <div className="flex justify-between items-center opacity-40">
                     <div className="flex gap-2">
                       <div className="w-8 h-8 rounded-lg bg-slate-200"></div>
@@ -271,7 +264,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onDemo }) => 
                     <div className="w-10 h-10 rounded-full bg-violet-600"></div>
                   </div>
 
-                  {/* Dynamic Content Based on Active Step */}
                   <div className="flex-1 space-y-8 animate-in fade-in zoom-in-95 duration-700" key={activeStep}>
                     {activeStep === 0 && (
                       <div className="space-y-6">
@@ -288,7 +280,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onDemo }) => 
                           </div>
                         </div>
                         <div className="p-6 bg-slate-900 rounded-3xl text-white font-black text-center flex items-center justify-center gap-3">
-                          <Plus size={20} /> Establish System
+                          <Plus size={20} /> Establish Habit
                         </div>
                       </div>
                     )}
@@ -343,7 +335,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onDemo }) => 
                   </div>
                 </div>
 
-                {/* Navigation Arrows */}
                 <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-4">
                    <button onClick={prevStep} className="p-4 rounded-full bg-slate-900 text-white hover:bg-violet-600 transition-colors shadow-xl">
                       <ChevronLeft size={24} />
@@ -358,7 +349,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onDemo }) => 
         </div>
       </section>
 
-      {/* Interactive Bento Features */}
       <section className="py-40 px-6 bg-white">
         <div className="max-w-7xl mx-auto">
           <div className="mb-24 space-y-6 text-center">
@@ -379,7 +369,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onDemo }) => 
               className="md:col-span-2 border-slate-200"
               icon={<Layers size={40} className="text-amber-500" fill="currentColor" />}
               title="Tiered Streaks"
-              desc="Watch your routines evolve from 'Spark' to 'Mastery' with architectural tiers and visual fire-themed tracking."
+              desc="Watch your habits evolve from 'Spark' to 'Mastery' with architectural tiers and visual fire-themed tracking."
             />
             <FeatureCard 
               className="md:col-span-2 border-fuchsia-200"
@@ -392,13 +382,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStart, onDemo }) => 
               className="md:col-span-2 border-emerald-100"
               icon={<Zap size={40} className="text-orange-500" fill="currentColor" />}
               title="Haptic Pulse"
-              desc="Hyper-satisfying visual and physical feedback for every routine completed, making consistency feel rewarding."
+              desc="Hyper-satisfying visual and physical feedback for every habit completed, making consistency feel rewarding."
             />
           </div>
         </div>
       </section>
 
-      {/* Footer */}
       <footer className="py-20 border-t border-slate-200 text-center px-6 bg-slate-50">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-10">
           <div className="flex items-center gap-4">

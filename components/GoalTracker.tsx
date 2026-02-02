@@ -25,7 +25,7 @@ export const GoalTracker: React.FC<GoalTrackerProps> = ({ goals, onUpdateProgres
           onClick={onOpenGoalModal}
           className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded-xl font-black text-sm uppercase tracking-widest shadow-xl shadow-emerald-200 dark:shadow-none hover:bg-emerald-700 transition-all"
         >
-          <Plus size={18} /> Establish Milestone
+          <Plus size={18} /> Establish Goal
         </button>
       </div>
     );
@@ -59,7 +59,6 @@ export const GoalTracker: React.FC<GoalTrackerProps> = ({ goals, onUpdateProgres
         const isCompleted = goal.current >= goal.target;
         const percent = Math.min(100, Math.floor((goal.current / goal.target) * 100));
         
-        // Fallback for goals created before frequency was added
         const frequency = goal.frequency || Frequency.ONCE; 
         const { label: freqLabel, icon: FreqIcon } = getFrequencyLabel(frequency);
 

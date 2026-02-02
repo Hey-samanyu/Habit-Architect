@@ -87,7 +87,7 @@ export const AIOverview: React.FC<AIOverviewProps> = ({ habits, goals, logs }) =
           <div className="bg-slate-50 dark:bg-slate-800/50 rounded-[1.5rem] p-10 border border-dashed border-slate-300 dark:border-slate-700 text-center transition-colors">
             <Lightbulb className="mx-auto text-slate-300 dark:text-slate-600 mb-3" size={32} />
             <p className="text-slate-600 dark:text-slate-400 font-bold text-base">
-              Initialize Kairo to analyze your structural routines and performance trends.
+              Initialize Kairo to analyze your structural habits and performance trends.
             </p>
           </div>
         )}
