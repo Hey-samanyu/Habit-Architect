@@ -188,18 +188,18 @@ export default function App() {
   };
 
   const handleStartDemo = () => {
-    // Populate high-fidelity shared demo data for sam locally
+    // Populate high-fidelity demo data requested for Sam
     const demoHabits: Habit[] = [
-        { id: 'h1', title: 'Architectural Blueprinting', category: Category.WORK, streak: 45, frequency: Frequency.DAILY, createdAt: subDays(new Date(), 60).toISOString() },
-        { id: 'h2', title: 'Morning Vinyasa Flow', category: Category.HEALTH, streak: 18, frequency: Frequency.DAILY, createdAt: subDays(new Date(), 30).toISOString() },
-        { id: 'h3', title: 'Deep Neural Meditation', category: Category.MINDFULNESS, streak: 122, frequency: Frequency.DAILY, createdAt: subDays(new Date(), 150).toISOString() },
-        { id: 'h4', title: 'Advanced Systems Study', category: Category.LEARNING, streak: 7, frequency: Frequency.DAILY, createdAt: subDays(new Date(), 10).toISOString() },
-        { id: 'h5', title: 'Structural Integrity Review', category: Category.OTHER, streak: 30, frequency: Frequency.WEEKLY, createdAt: subDays(new Date(), 90).toISOString() },
+        { id: 'h1', title: 'Run 5km', category: Category.HEALTH, streak: 12, frequency: Frequency.DAILY, createdAt: subDays(new Date(), 30).toISOString() },
+        { id: 'h2', title: 'Read 20 Pages', category: Category.LEARNING, streak: 21, frequency: Frequency.DAILY, createdAt: subDays(new Date(), 40).toISOString() },
+        { id: 'h3', title: 'Complete 1 Project', category: Category.WORK, streak: 4, frequency: Frequency.WEEKLY, createdAt: subDays(new Date(), 60).toISOString() },
+        { id: 'h4', title: 'Check Finances', category: Category.OTHER, streak: 8, frequency: Frequency.WEEKLY, createdAt: subDays(new Date(), 90).toISOString() },
+        { id: 'h5', title: 'Complete 20 PYQ', category: Category.LEARNING, streak: 2, frequency: Frequency.MONTHLY, createdAt: subDays(new Date(), 90).toISOString() },
     ];
     
     const demoGoals: Goal[] = [
-        { id: 'g1', title: 'Design 2026 Masterplan', target: 100, current: 85, unit: 'Milestones', frequency: Frequency.ONCE },
-        { id: 'g2', title: 'Scale Cognitive Load', target: 50, current: 42, unit: 'Levels', frequency: Frequency.ONCE }
+        { id: 'g1', title: 'Run 50km', target: 50, current: 15, unit: 'km', frequency: Frequency.ONCE },
+        { id: 'g2', title: 'Finish 5 books', target: 5, current: 2, unit: 'Books', frequency: Frequency.ONCE }
     ];
 
     const todayKey = getTodayKey();
@@ -207,16 +207,17 @@ export default function App() {
     const dayBeforeKey = format(subDays(new Date(), 2), 'yyyy-MM-dd');
 
     const demoLogs: Record<string, DailyLog> = {
-        [todayKey]: { date: todayKey, completedHabitIds: ['h1', 'h3', 'h4'], goalProgress: {} },
-        [yesterdayKey]: { date: yesterdayKey, completedHabitIds: ['h1', 'h2', 'h3', 'h4', 'h5'], goalProgress: {} },
-        [dayBeforeKey]: { date: dayBeforeKey, completedHabitIds: ['h1', 'h3'], goalProgress: {} }
+        [todayKey]: { date: todayKey, completedHabitIds: ['h1', 'h2'], goalProgress: {} },
+        [yesterdayKey]: { date: yesterdayKey, completedHabitIds: ['h1', 'h2', 'h3'], goalProgress: {} },
+        [dayBeforeKey]: { date: dayBeforeKey, completedHabitIds: ['h1', 'h2'], goalProgress: {} }
     };
 
     setState({
         habits: demoHabits,
         goals: demoGoals,
         logs: demoLogs,
-        earnedBadges: ['first_step', 'streak_3', 'streak_7', 'streak_30', 'architect', 'consistent']
+        // No goals completed, so goal_getter is not earned
+        earnedBadges: ['first_step', 'streak_3', 'streak_7', 'architect']
     });
 
     setUser({
