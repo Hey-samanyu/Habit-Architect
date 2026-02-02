@@ -4,7 +4,7 @@ import {
   Plus, Layout, CheckCircle2, Target, Menu, Home, ListChecks, 
   LogOut, Moon, Sun, Cloud, BarChart3, Medal, Sparkles,
   Heart, Briefcase, GraduationCap, Compass, HelpCircle, 
-  Trophy, Repeat, Calendar, Flag
+  Trophy, Repeat, Calendar, Flag, ChevronDown
 } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 import { supabase, isSupabaseConfigured } from './services/supabaseClient';
@@ -29,9 +29,10 @@ const DEMO_USER_ID = '9639795c-0bcc-4757-bc48-d291377db139';
 const DEMO_USER_EMAIL = 'samanyu@samanyukots.online';
 const DEMO_USER_NAME = 'sam';
 
+const COMMON_UNITS = ['Units', 'Pages', 'km', 'Hours', 'Minutes', 'Lessons', 'Tasks', 'Books'];
+
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
-  // Initial state is strictly a blank slate
   const [state, setState] = useState<AppState>({ habits: [], goals: [], logs: {}, earnedBadges: [] });
   const [isLoaded, setIsLoaded] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved');
@@ -69,7 +70,6 @@ export default function App() {
     const client = supabase; if (!client) { setIsLoaded(true); return; }
     try {
       const { data, error } = await client.from('user_data').select('content').eq('user_id', userData.id).single();
-      // Only update state if data actually exists in Supabase. Otherwise, stays as blank slate.
       if (data?.content) setState(data.content as AppState);
     } catch (err) {
         console.warn("Starting fresh record for architect:", userData.email);
@@ -127,7 +127,7 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, [loadUserData]);
 
-  // Achievement Engine - Auto-check and award badges
+  // Achievement Engine
   useEffect(() => {
     if (!isLoaded || !user) return;
 
@@ -193,8 +193,8 @@ export default function App() {
         { id: 'h1', title: 'Run 5km', category: Category.HEALTH, streak: 12, frequency: Frequency.DAILY, createdAt: subDays(new Date(), 30).toISOString() },
         { id: 'h2', title: 'Read 20 Pages', category: Category.LEARNING, streak: 21, frequency: Frequency.DAILY, createdAt: subDays(new Date(), 40).toISOString() },
         { id: 'h3', title: 'Complete 1 Project', category: Category.WORK, streak: 4, frequency: Frequency.WEEKLY, createdAt: subDays(new Date(), 60).toISOString() },
-        { id: 'h4', title: 'Check Finances', category: Category.OTHER, streak: 8, frequency: Frequency.WEEKLY, createdAt: subDays(new Date(), 90).toISOString() },
-        { id: 'h5', title: 'Complete 20 PYQ', category: Category.LEARNING, streak: 2, frequency: Frequency.MONTHLY, createdAt: subDays(new Date(), 90).toISOString() },
+        { id: 'h4', title: 'Check finances', category: Category.OTHER, streak: 8, frequency: Frequency.WEEKLY, createdAt: subDays(new Date(), 90).toISOString() },
+        { id: 'h5', title: 'Complete 20 pyq', category: Category.LEARNING, streak: 2, frequency: Frequency.MONTHLY, createdAt: subDays(new Date(), 90).toISOString() },
     ];
     
     const demoGoals: Goal[] = [
@@ -216,7 +216,7 @@ export default function App() {
         habits: demoHabits,
         goals: demoGoals,
         logs: demoLogs,
-        // No goals completed, so goal_getter is not earned
+        // specifically requested NO goals ever completed badges
         earnedBadges: ['first_step', 'streak_3', 'streak_7', 'architect']
     });
 
@@ -247,7 +247,6 @@ export default function App() {
         });
       }
 
-      // Update streaks logic
       const updatedHabits = prev.habits.map(h => {
         if (h.id === id) {
           return { ...h, streak: !isCompleted ? h.streak + 1 : Math.max(0, h.streak - 1) };
@@ -496,23 +495,71 @@ export default function App() {
           </div>
       </Modal>
 
-      {/* Goal Modal */}
+      {/* Goal Modal (Milestone) */}
       <Modal isOpen={isGoalModalOpen} onClose={() => setGoalModalOpen(false)} title="New Milestone">
           <div className="space-y-6">
               <div className="space-y-2">
                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Milestone Name</label>
-                <input value={newGoalTitle} onChange={e => setNewGoalTitle(e.target.value)} placeholder="e.g. Read 500 Pages" className="w-full bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl font-bold border-2 border-slate-100 dark:border-slate-700 focus:border-emerald-600 outline-none text-slate-900 dark:text-white" />
+                <input value={newGoalTitle} onChange={e => setNewGoalTitle(e.target.value)} placeholder="e.g. Run 50km" className="w-full bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl font-bold border-2 border-slate-100 dark:border-slate-700 focus:border-emerald-600 outline-none text-slate-900 dark:text-white" />
               </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Goal Type</label>
+                <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200 dark:border-slate-700">
+                  <button 
+                    onClick={() => setNewGoalFrequency(Frequency.ONCE)} 
+                    className={`flex-1 py-3 text-xs font-black rounded-xl transition-all ${newGoalFrequency === Frequency.ONCE ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+                  >
+                    ONE-TIME
+                  </button>
+                  <button 
+                    onClick={() => setNewGoalFrequency(Frequency.DAILY)} 
+                    className={`flex-1 py-3 text-xs font-black rounded-xl transition-all ${newGoalFrequency !== Frequency.ONCE ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
+                  >
+                    RECURRING
+                  </button>
+                </div>
+              </div>
+
+              {newGoalFrequency !== Frequency.ONCE && (
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Recurring Period</label>
+                  <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200 dark:border-slate-700">
+                    {[Frequency.DAILY, Frequency.WEEKLY, Frequency.MONTHLY].map((f) => (
+                      <button key={f} onClick={() => setNewGoalFrequency(f)} className={`flex-1 py-3 text-[10px] font-black rounded-xl transition-all ${newGoalFrequency === f ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}>
+                        {f.toUpperCase()}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                     <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Target</label>
                     <input type="number" value={newGoalTarget} onChange={e => setNewGoalTarget(parseInt(e.target.value) || 0)} className="w-full bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl font-bold border-2 border-slate-100 dark:border-slate-700 focus:border-emerald-600 outline-none text-slate-900 dark:text-white" />
                 </div>
-                <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Unit</label>
-                    <input value={newGoalUnit} onChange={e => setNewGoalUnit(e.target.value)} placeholder="e.g. Pages" className="w-full bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl font-bold border-2 border-slate-100 dark:border-slate-700 focus:border-emerald-600 outline-none text-slate-900 dark:text-white" />
+                <div className="space-y-2 relative">
+                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Common Unit</label>
+                    <div className="relative group">
+                      <select 
+                        value={newGoalUnit} 
+                        onChange={e => setNewGoalUnit(e.target.value)} 
+                        className="w-full bg-slate-50 dark:bg-slate-800/50 p-5 rounded-2xl font-bold border-2 border-slate-100 dark:border-slate-700 focus:border-emerald-600 outline-none text-slate-900 dark:text-white appearance-none pr-10"
+                      >
+                        {COMMON_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                        {!COMMON_UNITS.includes(newGoalUnit) && <option value={newGoalUnit}>{newGoalUnit}</option>}
+                      </select>
+                      <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    </div>
                 </div>
               </div>
+              
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Custom Unit (Optional)</label>
+                <input value={newGoalUnit} onChange={e => setNewGoalUnit(e.target.value)} placeholder="Or type custom unit..." className="w-full bg-slate-50 dark:bg-slate-800/50 px-5 py-3 rounded-xl font-bold border border-slate-100 dark:border-slate-700 focus:border-emerald-600 outline-none text-slate-900 dark:text-white text-sm" />
+              </div>
+
               <button onClick={addGoal} disabled={!newGoalTitle.trim()} className="w-full bg-emerald-600 disabled:bg-slate-300 text-white py-5 rounded-2xl font-black shadow-xl hover:bg-emerald-700 transition-all flex items-center justify-center gap-3">
                 <Trophy size={20} /> SET MILESTONE
               </button>
