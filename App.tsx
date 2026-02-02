@@ -4,7 +4,7 @@ import {
   Plus, Layout, CheckCircle2, Target, Menu, Home, ListChecks, 
   LogOut, Moon, Sun, Cloud, BarChart3, Medal, Sparkles,
   Heart, Briefcase, GraduationCap, Compass, HelpCircle, 
-  Trophy, Repeat, Calendar, Flag, ChevronDown, Rocket, Share2, Timer
+  Trophy, Repeat, Calendar, Flag, ChevronDown, Rocket, Share2, Timer, House
 } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 import { supabase, isSupabaseConfigured } from './services/supabaseClient';
@@ -17,6 +17,7 @@ import { GoalTracker } from './components/GoalTracker';
 import { AIOverview } from './components/AIOverview';
 import { Modal } from './components/UIComponents';
 import { FocusMode } from './components/FocusMode';
+import { LifeHouse } from './components/LifeHouse';
 
 // Lazy loaded modules for performance
 const Analytics = lazy(() => import('./components/Analytics').then(m => ({ default: m.Analytics })));
@@ -321,7 +322,7 @@ export default function App() {
       frequency: newGoalFrequency
     };
     setState(prev => ({ ...prev, goals: [...prev.goals, newGoal] }));
-    setNewGoalTitle('');
+    setNewHabitTitle('');
     setGoalModalOpen(false);
   };
 
@@ -351,6 +352,8 @@ export default function App() {
             <GoalTracker goals={state.goals} onUpdateProgress={handleUpdateGoalProgress} onDeleteGoal={(id) => setState(prev => ({ ...prev, goals: prev.goals.filter(g => g.id !== id) }))} onOpenGoalModal={() => setGoalModalOpen(true)} />
           </div>
         );
+      case '/house':
+        return <LifeHouse habits={state.habits} logs={state.logs} />;
       case '/insights':
         return (
           <Suspense fallback={<div className="h-64 flex items-center justify-center animate-pulse bg-slate-100 dark:bg-slate-800 rounded-3xl" />}>
@@ -448,6 +451,7 @@ export default function App() {
              <button onClick={() => navigateTo('/dashboard')} className={`w-full flex items-center gap-4 px-5 py-4 rounded-xl font-bold transition-all ${currentPath === '/dashboard' || currentPath === '/' ? 'bg-violet-600 text-white shadow-xl' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}><Home size={20} /> Vision</button>
              <button onClick={() => navigateTo('/habits')} className={`w-full flex items-center gap-4 px-5 py-4 rounded-xl font-bold transition-all ${currentPath === '/habits' ? 'bg-violet-600 text-white shadow-xl' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}><ListChecks size={20} /> Habits</button>
              <button onClick={() => navigateTo('/goals')} className={`w-full flex items-center gap-4 px-5 py-4 rounded-xl font-bold transition-all ${currentPath === '/goals' ? 'bg-violet-600 text-white shadow-xl' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}><Target size={20} /> Goals</button>
+             <button onClick={() => navigateTo('/house')} className={`w-full flex items-center gap-4 px-5 py-4 rounded-xl font-bold transition-all ${currentPath === '/house' ? 'bg-violet-600 text-white shadow-xl' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}><House size={20} /> Life House</button>
              <button onClick={() => navigateTo('/insights')} className={`w-full flex items-center gap-4 px-5 py-4 rounded-xl font-bold transition-all ${currentPath === '/insights' ? 'bg-violet-600 text-white shadow-xl' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}><BarChart3 size={20} /> Insights</button>
              <button onClick={() => navigateTo('/trophies')} className={`w-full flex items-center gap-4 px-5 py-4 rounded-xl font-bold transition-all ${currentPath === '/trophies' ? 'bg-violet-600 text-white shadow-xl' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}><Medal size={20} /> Trophies</button>
           </nav>
