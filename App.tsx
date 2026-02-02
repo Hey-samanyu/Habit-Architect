@@ -24,13 +24,14 @@ const KairoChat = lazy(() => import('./components/KairoChat').then(m => ({ defau
 
 const getTodayKey = () => format(new Date(), 'yyyy-MM-dd');
 
-// The specific requested identity for the demo architect
-const DEMO_USER_ID = 'c04c01c0-bd0d-46b2-a30a-b5dc93974259';
-const DEMO_USER_EMAIL = 'samanyukots4@gmail.com';
-const DEMO_USER_NAME = 'Samanyu Kots';
+// The specific requested identity for the demo architect: sam
+const DEMO_USER_ID = '9639795c-0bcc-4757-bc48-d291377db139';
+const DEMO_USER_EMAIL = 'samanyu@samanyukots.online';
+const DEMO_USER_NAME = 'sam';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
+  // Initial state is strictly a blank slate
   const [state, setState] = useState<AppState>({ habits: [], goals: [], logs: {}, earnedBadges: [] });
   const [isLoaded, setIsLoaded] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved');
@@ -68,6 +69,7 @@ export default function App() {
     const client = supabase; if (!client) { setIsLoaded(true); return; }
     try {
       const { data, error } = await client.from('user_data').select('content').eq('user_id', userData.id).single();
+      // Only update state if data actually exists in Supabase. Otherwise, stays as blank slate.
       if (data?.content) setState(data.content as AppState);
     } catch (err) {
         console.warn("Starting fresh record for architect:", userData.email);
@@ -179,17 +181,14 @@ export default function App() {
   }, [state, isLoaded, user]);
 
   const handleSignOut = async () => {
-    if (user?.id === TEST_ACCOUNT_ID || user?.id === DEMO_USER_ID) {
-      setUser(null);
-      setState({ habits: [], goals: [], logs: {}, earnedBadges: [] });
-      navigateTo('/');
-    } else {
-      await supabase?.auth.signOut();
-    }
+    setUser(null);
+    setState({ habits: [], goals: [], logs: {}, earnedBadges: [] });
+    if (supabase) await supabase.auth.signOut();
+    navigateTo('/');
   };
 
   const handleStartDemo = () => {
-    // Populate high-fidelity shared demo data for Samanyu Kots
+    // Populate high-fidelity shared demo data for sam locally
     const demoHabits: Habit[] = [
         { id: 'h1', title: 'Architectural Blueprinting', category: Category.WORK, streak: 45, frequency: Frequency.DAILY, createdAt: subDays(new Date(), 60).toISOString() },
         { id: 'h2', title: 'Morning Vinyasa Flow', category: Category.HEALTH, streak: 18, frequency: Frequency.DAILY, createdAt: subDays(new Date(), 30).toISOString() },

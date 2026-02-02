@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Mail, ArrowRight, Loader2, Layout, AlertCircle, KeyRound, CheckCircle2, User as UserIcon, Lock, Eye, EyeOff } from 'lucide-react';
+import { Mail, ArrowRight, Loader2, Layout, AlertCircle, CheckCircle2, User as UserIcon, Lock, Eye, EyeOff } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../services/supabaseClient';
 import { User } from '../types';
 
@@ -8,8 +8,8 @@ interface AuthScreenProps {
   onAuthSuccess: (user: User) => void;
 }
 
-// Updated to the requested UID for Samanyu Kots
-export const TEST_ACCOUNT_ID = 'c04c01c0-bd0d-46b2-a30a-b5dc93974259';
+// Updated to the requested identity UID for sam
+export const TEST_ACCOUNT_ID = '9639795c-0bcc-4757-bc48-d291377db139';
 
 export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
   const [mode, setMode] = useState<'login' | 'signup'>('login');
@@ -21,25 +21,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isTestAccount = email.toLowerCase().trim() === 'test@test.com' || email.toLowerCase().trim() === 'samanyukots4@gmail.com';
-
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-
-    // Test Mode bypass
-    if (isTestAccount) {
-        setTimeout(() => {
-            onAuthSuccess({
-                id: TEST_ACCOUNT_ID,
-                email: 'samanyukots4@gmail.com',
-                name: 'Samanyu Kots'
-            });
-            setLoading(false);
-        }, 600);
-        return;
-    }
 
     if (!isSupabaseConfigured() || !supabase) {
         setError("Database connection missing. Please configure Supabase.");
@@ -195,13 +180,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
                     </>
                 )}
             </button>
-
-            {isTestAccount && (
-                <div className="mt-6 p-4 bg-violet-50 dark:bg-violet-900/20 border border-violet-100 dark:border-violet-800 rounded-2xl text-center">
-                    <p className="text-violet-600 dark:text-violet-400 font-black text-[10px] uppercase tracking-widest animate-pulse">Architect Entry Authorized</p>
-                    <p className="text-violet-500 dark:text-violet-500 font-bold text-[9px] mt-1">Confirmed for Samanyu Kots</p>
-                </div>
-            )}
         </form>
         
         <p className="text-center mt-8 text-slate-400 dark:text-slate-600 font-bold text-[10px] uppercase tracking-[0.2em]">
