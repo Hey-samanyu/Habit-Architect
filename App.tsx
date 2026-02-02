@@ -4,7 +4,7 @@ import {
   Plus, Layout, CheckCircle2, Target, Menu, Home, ListChecks, 
   LogOut, Moon, Sun, Cloud, BarChart3, Medal, Sparkles,
   Heart, Briefcase, GraduationCap, Compass, HelpCircle, 
-  Trophy, Repeat, Calendar, Flag, ChevronDown
+  Trophy, Repeat, Calendar, Flag, ChevronDown, Rocket, Share2
 } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 import { supabase, isSupabaseConfigured } from './services/supabaseClient';
@@ -29,7 +29,7 @@ const DEMO_USER_ID = '9639795c-0bcc-4757-bc48-d291377db139';
 const DEMO_USER_EMAIL = 'samanyu@samanyukots.online';
 const DEMO_USER_NAME = 'sam';
 
-const COMMON_UNITS = ['Units', 'Pages', 'km', 'Hours', 'Minutes', 'Lessons', 'Tasks', 'Books'];
+const COMMON_UNITS = ['Units', 'Pages', 'km', 'Hours', 'Minutes', 'Lessons', 'Tasks', 'Books', 'Chapters', 'Sets', 'Reps'];
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -42,6 +42,7 @@ export default function App() {
   const [isSidebarOpen, setSidebarOpen] = useState(false); 
   const [isHabitModalOpen, setHabitModalOpen] = useState(false);
   const [isGoalModalOpen, setGoalModalOpen] = useState(false);
+  const [completedGoalCelebration, setCompletedGoalCelebration] = useState<Goal | null>(null);
 
   // Form State
   const [newHabitTitle, setNewHabitTitle] = useState('');
@@ -198,7 +199,7 @@ export default function App() {
     ];
     
     const demoGoals: Goal[] = [
-        { id: 'g1', title: 'Run 50km', target: 50, current: 15, unit: 'km', frequency: Frequency.ONCE },
+        { id: 'g1', title: 'Run 50km', target: 50, current: 35, unit: 'km', frequency: Frequency.ONCE },
         { id: 'g2', title: 'Finish 5 books', target: 5, current: 2, unit: 'Books', frequency: Frequency.ONCE }
     ];
 
@@ -216,7 +217,7 @@ export default function App() {
         habits: demoHabits,
         goals: demoGoals,
         logs: demoLogs,
-        // specifically requested NO goals ever completed badges
+        // specifically requested NO goals ever completed badges (exclude 'goal_getter')
         earnedBadges: ['first_step', 'streak_3', 'streak_7', 'architect']
     });
 
@@ -265,6 +266,34 @@ export default function App() {
     });
   };
 
+  const handleUpdateGoalProgress = (id: string, delta: number) => {
+    setState(prev => {
+      const newGoals = prev.goals.map(g => {
+        if (g.id === id) {
+          const wasCompleted = g.current >= g.target;
+          const newCurrent = Math.max(0, g.current + delta);
+          const isNowCompleted = newCurrent >= g.target;
+
+          if (!wasCompleted && isNowCompleted) {
+            // Trigger celebration
+            setCompletedGoalCelebration(g);
+            if (typeof window !== 'undefined' && (window as any).confetti) {
+              (window as any).confetti({
+                particleCount: 150,
+                spread: 100,
+                origin: { y: 0.6 },
+                colors: ['#10b981', '#fbbf24', '#3b82f6']
+              });
+            }
+          }
+          return { ...g, current: newCurrent };
+        }
+        return g;
+      });
+      return { ...prev, goals: newGoals };
+    });
+  };
+
   const addHabit = () => {
     if (!newHabitTitle.trim()) return;
     const habitId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15);
@@ -308,7 +337,7 @@ export default function App() {
           <div className="space-y-8 animate-in fade-in duration-500">
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Your Routines</h2>
-                <button onClick={() => setHabitModalOpen(true)} className="bg-violet-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-violet-200 dark:shadow-none"><Plus size={20}/> New</button>
+                <button onClick={() => setHabitModalOpen(true)} className="bg-violet-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-violet-200 dark:shadow-none transition-all hover:scale-105 active:scale-95"><Plus size={20}/> New</button>
             </div>
             <HabitTracker habits={state.habits} completedHabitIds={todayLog.completedHabitIds} onToggleHabit={toggleHabit} onDeleteHabit={(id) => setState(prev => ({ ...prev, habits: prev.habits.filter(h => h.id !== id) }))} />
           </div>
@@ -318,9 +347,9 @@ export default function App() {
           <div className="space-y-8 animate-in fade-in duration-500">
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Milestones</h2>
-                <button onClick={() => setGoalModalOpen(true)} className="bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-emerald-200 dark:shadow-none"><Plus size={20}/> New Milestone</button>
+                <button onClick={() => setGoalModalOpen(true)} className="bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-emerald-200 dark:shadow-none transition-all hover:scale-105 active:scale-95"><Plus size={20}/> New Milestone</button>
             </div>
-            <GoalTracker goals={state.goals} onUpdateProgress={(id, delta) => setState(prev => ({ ...prev, goals: prev.goals.map(g => g.id === id ? { ...g, current: Math.max(0, g.current + delta) } : g) }))} onDeleteGoal={(id) => setState(prev => ({ ...prev, goals: prev.goals.filter(g => g.id !== id) }))} onOpenGoalModal={() => setGoalModalOpen(true)} />
+            <GoalTracker goals={state.goals} onUpdateProgress={handleUpdateGoalProgress} onDeleteGoal={(id) => setState(prev => ({ ...prev, goals: prev.goals.filter(g => g.id !== id) }))} onOpenGoalModal={() => setGoalModalOpen(true)} />
           </div>
         );
       case '/insights':
@@ -379,7 +408,7 @@ export default function App() {
                         <h3 className="font-black text-slate-400 uppercase tracking-widest text-xs">Milestones</h3>
                     </div>
                  </div>
-                <GoalTracker goals={state.goals} onUpdateProgress={(id, delta) => setState(prev => ({ ...prev, goals: prev.goals.map(g => g.id === id ? { ...g, current: Math.max(0, g.current + delta) } : g) }))} onDeleteGoal={(id) => setState(prev => ({ ...prev, goals: prev.goals.filter(g => g.id !== id) }))} onOpenGoalModal={() => setGoalModalOpen(true)} />
+                <GoalTracker goals={state.goals} onUpdateProgress={handleUpdateGoalProgress} onDeleteGoal={(id) => setState(prev => ({ ...prev, goals: prev.goals.filter(g => g.id !== id) }))} onOpenGoalModal={() => setGoalModalOpen(true)} />
               </div>
             </div>
           </div>
@@ -442,7 +471,7 @@ export default function App() {
                         </div>
                     )}
                 </div>
-                <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm transition-transform">{isDarkMode ? <Sun size={18} /> : <Moon size={18} />}</button>
+                <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm transition-transform active:scale-90">{isDarkMode ? <Sun size={18} /> : <Moon size={18} />}</button>
                 <div className="flex items-center gap-3 pl-4 border-l border-slate-200 dark:border-slate-700">
                     <span className="hidden sm:inline font-bold text-sm text-slate-700 dark:text-slate-200">{user.name}</span>
                     <div className="w-10 h-10 bg-violet-600 rounded-xl flex items-center justify-center text-white font-black">{user.name[0]}</div>
@@ -562,6 +591,41 @@ export default function App() {
 
               <button onClick={addGoal} disabled={!newGoalTitle.trim()} className="w-full bg-emerald-600 disabled:bg-slate-300 text-white py-5 rounded-2xl font-black shadow-xl hover:bg-emerald-700 transition-all flex items-center justify-center gap-3">
                 <Trophy size={20} /> SET MILESTONE
+              </button>
+          </div>
+      </Modal>
+
+      {/* Goal Completion Celebration Popup */}
+      <Modal isOpen={!!completedGoalCelebration} onClose={() => setCompletedGoalCelebration(null)} title="Milestone Achieved!">
+          <div className="flex flex-col items-center text-center space-y-6">
+              <div className="relative">
+                <div className="absolute inset-0 bg-emerald-500 blur-2xl opacity-20 animate-pulse"></div>
+                <div className="w-24 h-24 bg-emerald-500 rounded-full flex items-center justify-center shadow-xl shadow-emerald-200 dark:shadow-none relative z-10">
+                    <Rocket className="text-white" size={48} />
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <h4 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">{completedGoalCelebration?.title}</h4>
+                <p className="text-slate-500 dark:text-slate-400 font-bold">Structural integrity maintained. Milestone finalized.</p>
+              </div>
+
+              <div className="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-3xl border border-slate-100 dark:border-slate-700 w-full">
+                  <div className="flex justify-between items-center text-xs font-black text-slate-400 uppercase tracking-widest mb-3">
+                      <span>Achievement Detail</span>
+                      <span className="text-emerald-600 dark:text-emerald-400">Validated</span>
+                  </div>
+                  <div className="text-left space-y-1">
+                      <div className="text-sm font-bold text-slate-900 dark:text-white">Target: {completedGoalCelebration?.target} {completedGoalCelebration?.unit}</div>
+                      <div className="text-xs font-medium text-slate-500">Status: Completed on {format(new Date(), 'MMM do, yyyy')}</div>
+                  </div>
+              </div>
+
+              <button 
+                onClick={() => setCompletedGoalCelebration(null)}
+                className="w-full py-5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl font-black shadow-xl hover:bg-slate-800 dark:hover:bg-slate-100 transition-all uppercase tracking-widest text-sm"
+              >
+                Continue Design
               </button>
           </div>
       </Modal>
