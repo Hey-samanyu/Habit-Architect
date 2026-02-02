@@ -73,7 +73,7 @@ export const GoalTracker: React.FC<GoalTrackerProps> = ({ goals, onUpdateProgres
 
             <div className="flex justify-between items-start mb-4">
                <div className="flex items-center gap-3">
-                  <div className={`p-2.5 rounded-xl ${isCompleted ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 ring-4 ring-amber-50 dark:ring-amber-900/20' : 'bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400'}`}>
+                  <div className={`p-2.5 rounded-xl ${isCompleted ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 ring-4 ring-amber-50 dark:ring-amber-900/20' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}`}>
                     <Trophy size={18} />
                   </div>
                   <div>
@@ -108,7 +108,7 @@ export const GoalTracker: React.FC<GoalTrackerProps> = ({ goals, onUpdateProgres
                <ProgressBar 
                   current={goal.current} 
                   max={goal.target} 
-                  colorClass={isCompleted ? 'bg-emerald-500' : 'bg-violet-600 dark:bg-violet-500'} 
+                  colorClass={isCompleted ? 'bg-emerald-500' : 'bg-slate-900 dark:bg-slate-400'} 
                />
                <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400 mt-2 font-semibold">
                   <span>0</span>
@@ -130,7 +130,7 @@ export const GoalTracker: React.FC<GoalTrackerProps> = ({ goals, onUpdateProgres
                 className={`flex-1 h-8 flex items-center justify-center gap-2 rounded-lg text-xs font-bold transition-all ${
                   isCompleted 
                     ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 cursor-default' 
-                    : 'bg-violet-600 hover:bg-violet-700 text-white shadow-sm hover:shadow-violet-200 dark:shadow-none'
+                    : 'bg-slate-900 hover:bg-slate-800 text-white shadow-sm'
                 }`}
               >
                 {isCompleted ? (

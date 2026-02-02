@@ -43,12 +43,12 @@ export const AIOverview: React.FC<AIOverviewProps> = ({ habits, goals, logs }) =
 
   return (
     <div className="bg-white dark:bg-slate-900 rounded-[2rem] p-8 shadow-sm border border-slate-200 dark:border-slate-800 relative overflow-hidden group transition-colors duration-300">
-      <div className="absolute top-0 right-0 w-64 h-64 bg-violet-50 dark:bg-violet-900/10 rounded-bl-full -mr-16 -mt-16 z-0 pointer-events-none transition-colors"></div>
+      <div className="absolute top-0 right-0 w-64 h-64 bg-slate-100 dark:bg-slate-800/20 rounded-bl-full -mr-16 -mt-16 z-0 pointer-events-none transition-colors"></div>
 
       <div className="relative z-10">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
-            <div className="bg-violet-600 p-2.5 rounded-xl shadow-lg shadow-violet-100 dark:shadow-none transition-all">
+            <div className="bg-slate-900 p-2.5 rounded-xl shadow-lg transition-all">
               <Brain className="text-white" size={24} />
             </div>
             <div>
@@ -69,7 +69,7 @@ export const AIOverview: React.FC<AIOverviewProps> = ({ habits, goals, logs }) =
               <button 
                 onClick={handleGenerate}
                 disabled={loading}
-                className="flex items-center gap-2 px-6 py-3 bg-violet-600 text-white rounded-xl text-sm font-black uppercase tracking-widest shadow-lg shadow-violet-200 dark:shadow-none hover:bg-violet-700 transition-all disabled:opacity-50"
+                className="flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-xl text-sm font-black uppercase tracking-widest shadow-lg hover:bg-slate-800 transition-all disabled:opacity-50"
               >
                 {loading ? <RefreshCw className="animate-spin" size={18} /> : <Sparkles size={18} />}
                 {analysis ? "Refresh" : "Insight"}

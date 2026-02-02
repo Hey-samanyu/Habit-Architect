@@ -45,7 +45,7 @@ interface ProgressBarProps {
   colorClass?: string;
 }
 
-export const ProgressBar: React.FC<ProgressBarProps> = ({ current, max, colorClass = "bg-violet-600" }) => {
+export const ProgressBar: React.FC<ProgressBarProps> = ({ current, max, colorClass = "bg-slate-900" }) => {
   const percentage = Math.min(100, Math.max(0, (current / max) * 100));
   return (
     <div className="h-3 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-200 dark:border-slate-700">

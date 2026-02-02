@@ -2,7 +2,7 @@
 import React, { useMemo } from 'react';
 import { Habit, DailyLog } from '../types';
 import { format, subDays } from 'date-fns';
-import { Construction, Trees, House, Shovel, Info } from 'lucide-react';
+import { Construction, Trees, Home, Shovel, Info } from 'lucide-react';
 // Fix: Import Card component from UIComponents
 import { Card } from './UIComponents';
 
@@ -179,7 +179,7 @@ export const LifeHouse: React.FC<LifeHouseProps> = ({ habits, logs }) => {
         </Card>
         <Card className="flex items-start gap-4">
            <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-600 dark:text-slate-400">
-              <Trees size={24} />
+              <Home size={24} />
            </div>
            <div>
               <h4 className="font-black text-slate-900 dark:text-white uppercase text-sm mb-1">Landscape</h4>
