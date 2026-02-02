@@ -128,7 +128,7 @@ export default function App() {
   }, [loadUserData]);
 
   useEffect(() => {
-    if (!isLoaded || !user) return;
+    if (!isLoaded || !user || user.id === DEMO_USER_ID) return;
     const todayKey = getTodayKey();
     const todayLog = (state.logs[todayKey] || { completedHabitIds: [] }) as DailyLog;
     const totalCompletions = (Object.values(state.logs) as DailyLog[]).reduce((acc, log) => acc + log.completedHabitIds.length, 0);
@@ -181,17 +181,31 @@ export default function App() {
 
   const handleStartDemo = () => {
     const demoHabits: Habit[] = [
+        // Daily
         { id: 'h1', title: 'Run 5km', category: Category.HEALTH, streak: 12, frequency: Frequency.DAILY, createdAt: subDays(new Date(), 30).toISOString() },
         { id: 'h2', title: 'Read 20 Pages', category: Category.LEARNING, streak: 21, frequency: Frequency.DAILY, createdAt: subDays(new Date(), 40).toISOString() },
+        // Weekly
         { id: 'h3', title: 'Complete 1 Project', category: Category.WORK, streak: 4, frequency: Frequency.WEEKLY, createdAt: subDays(new Date(), 60).toISOString() },
+        { id: 'h4', title: 'Check finances', category: Category.OTHER, streak: 2, frequency: Frequency.WEEKLY, createdAt: subDays(new Date(), 15).toISOString() },
+        // Monthly
+        { id: 'h5', title: 'Complete 20 pyq', category: Category.LEARNING, streak: 1, frequency: Frequency.MONTHLY, createdAt: subDays(new Date(), 30).toISOString() },
     ];
+    
+    const demoGoals: Goal[] = [
+        { id: 'g1', title: 'Run 50km', target: 50, current: 12, unit: 'km', frequency: Frequency.ONCE },
+        { id: 'g2', title: 'Finish 5 books', target: 5, current: 1, unit: 'Books', frequency: Frequency.ONCE }
+    ];
+
     const todayKey = getTodayKey();
     setState({
         habits: demoHabits,
-        goals: [{ id: 'g1', title: 'Run 50km', target: 50, current: 35, unit: 'km', frequency: Frequency.ONCE }],
-        logs: { [todayKey]: { date: todayKey, completedHabitIds: ['h1', 'h2'], goalProgress: {} } },
-        earnedBadges: ['first_step', 'architect']
+        goals: demoGoals,
+        logs: { 
+          [todayKey]: { date: todayKey, completedHabitIds: ['h1'], goalProgress: {} } 
+        },
+        earnedBadges: [] // No milestones ever completed
     });
+    
     setUser({ id: DEMO_USER_ID, email: DEMO_USER_EMAIL, name: DEMO_USER_NAME });
     navigateTo('/dashboard');
   };
