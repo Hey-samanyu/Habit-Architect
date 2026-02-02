@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, Suspense, lazy, useCallback, useMemo } from 'react';
 import { 
-  Plus, Layout, CheckCircle2, Target, Menu, Home, ListChecks, 
+  Plus, Layout, CheckCircle2, Target, Menu, ListChecks, 
   LogOut, Moon, Sun, Cloud, BarChart3, Medal, Sparkles,
   Heart, Briefcase, GraduationCap, Compass, HelpCircle, 
   Trophy, Repeat, Calendar, Flag, ChevronDown, Rocket, Share2, Timer, Play
@@ -17,7 +17,6 @@ import { GoalTracker } from './components/GoalTracker';
 import { AIOverview } from './components/AIOverview';
 import { Modal } from './components/UIComponents';
 import { FocusMode } from './components/FocusMode';
-import { LifeHouse } from './components/LifeHouse';
 
 // Lazy loaded modules for performance
 const Analytics = lazy(() => import('./components/Analytics').then(m => ({ default: m.Analytics })));
@@ -267,8 +266,6 @@ export default function App() {
             </button>
           </div>
         );
-      case '/house':
-        return <LifeHouse habits={state.habits} logs={state.logs} />;
       case '/insights':
         return (
           <Suspense fallback={<div className="h-64 flex items-center justify-center animate-pulse bg-slate-100 dark:bg-slate-800 rounded-3xl" />}>
@@ -338,7 +335,6 @@ export default function App() {
     { path: '/habits', label: 'Habits', icon: ListChecks },
     { path: '/goals', label: 'Goals', icon: Target },
     { path: '/focus', label: 'Focus', icon: Timer },
-    { path: '/house', label: 'Life House', icon: Home },
     { path: '/insights', label: 'Insights', icon: BarChart3 },
     { path: '/trophies', label: 'Trophies', icon: Medal },
   ];
