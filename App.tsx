@@ -24,6 +24,11 @@ const KairoChat = lazy(() => import('./components/KairoChat').then(m => ({ defau
 
 const getTodayKey = () => format(new Date(), 'yyyy-MM-dd');
 
+// The specific requested identity for the demo architect
+const DEMO_USER_ID = 'c04c01c0-bd0d-46b2-a30a-b5dc93974259';
+const DEMO_USER_EMAIL = 'samanyukots4@gmail.com';
+const DEMO_USER_NAME = 'Samanyu Kots';
+
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [state, setState] = useState<AppState>({ habits: [], goals: [], logs: {}, earnedBadges: [] });
@@ -150,7 +155,7 @@ export default function App() {
 
   // Auto-Save
   useEffect(() => {
-    if (!isLoaded || !user || user.id === TEST_ACCOUNT_ID) return;
+    if (!isLoaded || !user || user.id === TEST_ACCOUNT_ID || user.id === DEMO_USER_ID) return;
 
     const saveData = async () => {
       setSaveStatus('saving');
@@ -174,7 +179,7 @@ export default function App() {
   }, [state, isLoaded, user]);
 
   const handleSignOut = async () => {
-    if (user?.id === TEST_ACCOUNT_ID) {
+    if (user?.id === TEST_ACCOUNT_ID || user?.id === DEMO_USER_ID) {
       setUser(null);
       setState({ habits: [], goals: [], logs: {}, earnedBadges: [] });
       navigateTo('/');
@@ -184,37 +189,41 @@ export default function App() {
   };
 
   const handleStartDemo = () => {
-    // Populate demo data
+    // Populate high-fidelity shared demo data for Samanyu Kots
     const demoHabits: Habit[] = [
-        { id: 'h1', title: 'Deep Work Session', category: Category.WORK, streak: 12, frequency: Frequency.DAILY, createdAt: subDays(new Date(), 30).toISOString() },
-        { id: 'h2', title: '5km Run', category: Category.HEALTH, streak: 5, frequency: Frequency.DAILY, createdAt: subDays(new Date(), 20).toISOString() },
-        { id: 'h3', title: 'Meditation', category: Category.MINDFULNESS, streak: 21, frequency: Frequency.DAILY, createdAt: subDays(new Date(), 40).toISOString() },
-        { id: 'h4', title: 'Skill Study', category: Category.LEARNING, streak: 3, frequency: Frequency.DAILY, createdAt: subDays(new Date(), 10).toISOString() },
+        { id: 'h1', title: 'Architectural Blueprinting', category: Category.WORK, streak: 45, frequency: Frequency.DAILY, createdAt: subDays(new Date(), 60).toISOString() },
+        { id: 'h2', title: 'Morning Vinyasa Flow', category: Category.HEALTH, streak: 18, frequency: Frequency.DAILY, createdAt: subDays(new Date(), 30).toISOString() },
+        { id: 'h3', title: 'Deep Neural Meditation', category: Category.MINDFULNESS, streak: 122, frequency: Frequency.DAILY, createdAt: subDays(new Date(), 150).toISOString() },
+        { id: 'h4', title: 'Advanced Systems Study', category: Category.LEARNING, streak: 7, frequency: Frequency.DAILY, createdAt: subDays(new Date(), 10).toISOString() },
+        { id: 'h5', title: 'Structural Integrity Review', category: Category.OTHER, streak: 30, frequency: Frequency.WEEKLY, createdAt: subDays(new Date(), 90).toISOString() },
     ];
     
     const demoGoals: Goal[] = [
-        { id: 'g1', title: 'Read "Atomic Habits"', target: 320, current: 245, unit: 'Pages', frequency: Frequency.ONCE },
-        { id: 'g2', title: 'Launch Side Project', target: 10, current: 7, unit: 'Modules', frequency: Frequency.ONCE }
+        { id: 'g1', title: 'Design 2026 Masterplan', target: 100, current: 85, unit: 'Milestones', frequency: Frequency.ONCE },
+        { id: 'g2', title: 'Scale Cognitive Load', target: 50, current: 42, unit: 'Levels', frequency: Frequency.ONCE }
     ];
 
     const todayKey = getTodayKey();
+    const yesterdayKey = format(subDays(new Date(), 1), 'yyyy-MM-dd');
+    const dayBeforeKey = format(subDays(new Date(), 2), 'yyyy-MM-dd');
+
     const demoLogs: Record<string, DailyLog> = {
-        [todayKey]: { date: todayKey, completedHabitIds: ['h1', 'h3'], goalProgress: {} },
-        [format(subDays(new Date(), 1), 'yyyy-MM-dd')]: { date: todayKey, completedHabitIds: ['h1', 'h2', 'h3', 'h4'], goalProgress: {} },
-        [format(subDays(new Date(), 2), 'yyyy-MM-dd')]: { date: todayKey, completedHabitIds: ['h1', 'h3'], goalProgress: {} }
+        [todayKey]: { date: todayKey, completedHabitIds: ['h1', 'h3', 'h4'], goalProgress: {} },
+        [yesterdayKey]: { date: yesterdayKey, completedHabitIds: ['h1', 'h2', 'h3', 'h4', 'h5'], goalProgress: {} },
+        [dayBeforeKey]: { date: dayBeforeKey, completedHabitIds: ['h1', 'h3'], goalProgress: {} }
     };
 
     setState({
         habits: demoHabits,
         goals: demoGoals,
         logs: demoLogs,
-        earnedBadges: ['first_step', 'streak_3', 'streak_7', 'architect']
+        earnedBadges: ['first_step', 'streak_3', 'streak_7', 'streak_30', 'architect', 'consistent']
     });
 
     setUser({
-        id: TEST_ACCOUNT_ID,
-        email: 'demo@habitarch.com',
-        name: 'Demo Architect'
+        id: DEMO_USER_ID,
+        email: DEMO_USER_EMAIL,
+        name: DEMO_USER_NAME
     });
 
     navigateTo('/dashboard');

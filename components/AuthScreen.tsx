@@ -8,7 +8,8 @@ interface AuthScreenProps {
   onAuthSuccess: (user: User) => void;
 }
 
-export const TEST_ACCOUNT_ID = '77777777-7777-7777-7777-777777777777';
+// Updated to the requested UID for Samanyu Kots
+export const TEST_ACCOUNT_ID = 'c04c01c0-bd0d-46b2-a30a-b5dc93974259';
 
 export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
   const [mode, setMode] = useState<'login' | 'signup'>('login');
@@ -20,7 +21,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isTestAccount = email.toLowerCase().trim() === 'test@test.com';
+  const isTestAccount = email.toLowerCase().trim() === 'test@test.com' || email.toLowerCase().trim() === 'samanyukots4@gmail.com';
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,8 +33,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
         setTimeout(() => {
             onAuthSuccess({
                 id: TEST_ACCOUNT_ID,
-                email: 'test@test.com',
-                name: 'Test Architect'
+                email: 'samanyukots4@gmail.com',
+                name: 'Samanyu Kots'
             });
             setLoading(false);
         }, 600);
@@ -197,8 +198,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthSuccess }) => {
 
             {isTestAccount && (
                 <div className="mt-6 p-4 bg-violet-50 dark:bg-violet-900/20 border border-violet-100 dark:border-violet-800 rounded-2xl text-center">
-                    <p className="text-violet-600 dark:text-violet-400 font-black text-[10px] uppercase tracking-widest animate-pulse">Test Architect Entry</p>
-                    <p className="text-violet-500 dark:text-violet-500 font-bold text-[9px] mt-1">Use any password to enter the demo vault</p>
+                    <p className="text-violet-600 dark:text-violet-400 font-black text-[10px] uppercase tracking-widest animate-pulse">Architect Entry Authorized</p>
+                    <p className="text-violet-500 dark:text-violet-500 font-bold text-[9px] mt-1">Confirmed for Samanyu Kots</p>
                 </div>
             )}
         </form>
