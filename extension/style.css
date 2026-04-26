@@ -1,0 +1,276 @@
+body {
+  width: 320px;
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  background-color: #ffffff;
+  color: #0f172a;
+  overflow: hidden;
+}
+
+.screen {
+  display: flex;
+  flex-direction: column;
+  min-height: 400px;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.header {
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.logo-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.logo-box {
+  background: #0f172a;
+  color: white;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font-weight: 900;
+  font-size: 14px;
+}
+
+h1 {
+  font-size: 16px;
+  font-weight: 900;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: -0.025em;
+}
+
+h1 span {
+  color: #64748b;
+}
+
+.status {
+  font-size: 9px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #94a3b8;
+}
+
+/* Auth Styles */
+.auth-container {
+  padding: 24px 16px;
+  flex: 1;
+}
+
+.tab-switcher {
+  display: flex;
+  background: #f1f5f9;
+  padding: 3px;
+  border-radius: 10px;
+  margin-bottom: 24px;
+}
+
+.tab-btn {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 8px;
+  font-size: 10px;
+  font-weight: 900;
+  color: #64748b;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.tab-btn.active {
+  background: white;
+  color: #0f172a;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.input-group {
+  margin-bottom: 16px;
+}
+
+.input-group label {
+  display: block;
+  font-size: 9px;
+  font-weight: 900;
+  color: #94a3b8;
+  margin-bottom: 6px;
+  letter-spacing: 0.05em;
+}
+
+.input-group input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  box-sizing: border-box;
+  outline: none;
+}
+
+.input-group input:focus {
+  border-color: #0f172a;
+}
+
+.error-msg {
+  background: #fff1f2;
+  color: #e11d48;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.btn-primary {
+  width: 100%;
+  padding: 14px;
+  background: #0f172a;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-weight: 900;
+  font-size: 12px;
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  transition: opacity 0.2s;
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+}
+
+/* Habit List Styles */
+.habit-container {
+  height: 320px;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.loading {
+  text-align: center;
+  padding: 40px 20px;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.habit-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  margin-bottom: 8px;
+  border: 1px solid #f1f5f9;
+  transition: all 0.2s ease;
+}
+
+.habit-item:hover {
+  border-color: #e2e8f0;
+}
+
+.habit-item.completed {
+  background: #f8fafc;
+}
+
+.check-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  border: 2px solid #e2e8f0;
+  background: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.habit-item.completed .check-btn {
+  background: #10b981;
+  border-color: #10b981;
+  color: white;
+}
+
+.habit-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.habit-item.completed .habit-title {
+  text-decoration: line-through;
+  color: #94a3b8;
+}
+
+.footer {
+  padding: 12px;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.btn-secondary {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-secondary:hover {
+  background: #f8fafc;
+}
+
+.btn-text {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 4px;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.btn-text:hover {
+  color: #e11d48;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 2px;
+}

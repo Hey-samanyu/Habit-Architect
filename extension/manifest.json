@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "Habit Architect Quick-Access",
+  "version": "1.0",
+  "description": "Tick off your daily habits instantly from your browser toolbar.",
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://isfqdvhtqeuyywwmyvpx.supabase.co/*"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  }
+}

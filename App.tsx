@@ -6,7 +6,7 @@ import {
   Heart, Briefcase, GraduationCap, Compass, HelpCircle, 
   Trophy, Repeat, Calendar, Flag, ChevronDown, Rocket, Share2, Timer, Play
 } from 'lucide-react';
-import { format, subDays } from 'date-fns';
+import { format, subDays, startOfDay } from 'date-fns';
 import { supabase, isSupabaseConfigured } from './services/supabaseClient';
 
 import { Habit, Goal, Category, AppState, Frequency, User, DailyLog } from './types';
@@ -196,14 +196,42 @@ export default function App() {
         { id: 'g2', title: 'Finish 5 books', target: 5, current: 1, unit: 'Books', frequency: Frequency.ONCE }
     ];
 
+    // Build historical logs for 14 days
+    const demoLogs: Record<string, DailyLog> = {};
+    for (let i = 0; i < 14; i++) {
+        const date = subDays(new Date(), i);
+        const dateKey = format(date, 'yyyy-MM-dd');
+        const completedIds: string[] = [];
+        
+        // Add daily habits for most days (streak logic)
+        if (i > 0) { // Assume everything was perfect until today for h1/h2
+            completedIds.push('h1', 'h2');
+        }
+        
+        // Add Weekly habits at intervals
+        if (i === 6 || i === 13) completedIds.push('h3'); // Project weekly
+        if (i === 3 || i === 10) completedIds.push('h4'); // Finances weekly
+        
+        demoLogs[dateKey] = {
+            date: dateKey,
+            completedHabitIds: completedIds,
+            goalProgress: {}
+        };
+    }
+
+    // Explicitly set today as "in progress"
     const todayKey = getTodayKey();
+    demoLogs[todayKey] = {
+        date: todayKey,
+        completedHabitIds: ['h1'], // Only ran today so far
+        goalProgress: {}
+    };
+
     setState({
         habits: demoHabits,
         goals: demoGoals,
-        logs: { 
-          [todayKey]: { date: todayKey, completedHabitIds: ['h1'], goalProgress: {} } 
-        },
-        earnedBadges: [] // No milestones ever completed
+        logs: demoLogs,
+        earnedBadges: [] // No milestones ever completed as requested
     });
     
     setUser({ id: DEMO_USER_ID, email: DEMO_USER_EMAIL, name: DEMO_USER_NAME });

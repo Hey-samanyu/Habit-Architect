@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Auth Screen (Login/Signup) -->
+  <div id="auth-screen" class="screen">
+    <div class="header">
+      <div class="logo-group">
+        <div class="logo-box">H</div>
+        <h1>Habit<span>Arch</span></h1>
+      </div>
+    </div>
+    <div class="auth-container">
+      <div class="tab-switcher">
+        <button id="tab-login" class="tab-btn active">LOGIN</button>
+        <button id="tab-signup" class="tab-btn">SIGN UP</button>
+      </div>
+      
+      <form id="auth-form" class="auth-form">
+        <div id="name-field" class="input-group hidden">
+          <label>NAME</label>
+          <input type="text" id="auth-name" placeholder="Your Name">
+        </div>
+        <div class="input-group">
+          <label>EMAIL</label>
+          <input type="email" id="auth-email" placeholder="email@example.com" required>
+        </div>
+        <div class="input-group">
+          <label>PASSWORD</label>
+          <input type="password" id="auth-password" placeholder="••••••••" required>
+        </div>
+        <div id="auth-error" class="error-msg hidden"></div>
+        <button type="submit" id="auth-submit" class="btn-primary">SECURE ACCESS</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Main Habit Screen -->
+  <div id="main-screen" class="screen hidden">
+    <div class="header">
+      <div class="logo-group">
+        <div class="logo-box">H</div>
+        <h1>Habit<span>Arch</span></h1>
+      </div>
+      <div id="sync-indicator" class="status">SYNCED</div>
+    </div>
+
+    <div id="habit-list" class="habit-container">
+      <div class="loading">Loading Blueprint...</div>
+    </div>
+
+    <div class="footer">
+      <button id="open-web" class="btn-secondary">Open Dashboard</button>
+      <button id="logout-btn" class="btn-text">Sign Out</button>
+    </div>
+  </div>
+
+  <!-- Load the local version of Supabase -->
+  <script src="supabase.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

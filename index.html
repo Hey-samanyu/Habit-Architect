@@ -5,48 +5,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Habit Architect</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
     <script>
-      window.process = { env: {} };
-      
-      tailwind.config = {
-        darkMode: 'class',
-        theme: {
-          extend: {
-            fontFamily: {
-              sans: ['Inter', 'sans-serif'],
-            },
-            animation: {
-              'pulse-slow': 'pulse 6s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-              'float': 'float 3s ease-in-out infinite',
-            },
-            keyframes: {
-              float: {
-                '0%, 100%': { transform: 'translateY(0)' },
-                '50%': { transform: 'translateY(-15px)' },
-              }
-            }
-          },
-        },
-      }
+      window.addEventListener('error', function(e) {
+        document.body.innerHTML += '<div style="position:fixed;top:0;left:0;z-index:9999;background:red;color:white;padding:20px;width:100%;font-size:16px;"><b>Global Error:</b> ' + e.message + '<br/><pre>' + e.filename + ':' + e.lineno + '</pre></div>';
+      });
+      window.addEventListener('unhandledrejection', function(e) {
+        document.body.innerHTML += '<div style="position:fixed;top:0;left:0;z-index:9999;background:red;color:white;padding:20px;width:100%;font-size:16px;"><b>Unhandled Promise Rejection:</b> ' + e.reason + '</div>';
+      });
     </script>
-<script type="importmap">
-{
-  "imports": {
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
-    "date-fns": "https://aistudiocdn.com/date-fns@^4.1.0",
-    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.555.0",
-    "vite": "https://aistudiocdn.com/vite@^7.2.4",
-    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
-    "@supabase/supabase-js": "https://aistudiocdn.com/@supabase/supabase-js@^2.86.0"
-  }
-}
-</script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 <style>
   body {
     background-color: #f8fafc;
